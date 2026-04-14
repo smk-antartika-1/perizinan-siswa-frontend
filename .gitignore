@@ -16,8 +16,10 @@
 # next.js
 /.next/
 /out/
+/build/
 
 # production
+/dist
 /build
 
 # misc
@@ -30,8 +32,17 @@ yarn-debug.log*
 yarn-error.log*
 .pnpm-debug.log*
 
-# env files (can opt-in for committing if needed)
-.env*
+# env files (Pastikan kredensial tidak ikut ter-commit)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+*.local
+
+# Pengecualian: Boleh di-commit sebagai contoh untuk developer lain
+!.env.example
+!.env.template
 
 # vercel
 .vercel
@@ -39,3 +50,19 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
+
+# Editor directories and files (Penting agar IDE file spesifik user tidak ter-commit)
+.idea/
+.vscode/*
+!.vscode/settings.json
+!.vscode/tasks.json
+!.vscode/launch.json
+!.vscode/extensions.json
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+
+# Log files
+*.log
