@@ -3,12 +3,7 @@
 # dependencies
 /node_modules
 /.pnp
-.pnp.*
-.yarn/*
-!.yarn/patches
-!.yarn/plugins
-!.yarn/releases
-!.yarn/versions
+.pnp.js
 
 # testing
 /coverage
@@ -16,11 +11,10 @@
 # next.js
 /.next/
 /out/
-/build/
 
 # production
-/dist
 /build
+/dist
 
 # misc
 .DS_Store
@@ -30,39 +24,40 @@
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-.pnpm-debug.log*
+pnpm-debug.log*
+.pnp.report.json
 
-# env files (Pastikan kredensial tidak ikut ter-commit)
+# local env files
+.env*.local
 .env
-.env.local
-.env.development.local
-.env.test.local
-.env.production.local
-*.local
-
-# Pengecualian: Boleh di-commit sebagai contoh untuk developer lain
 !.env.example
-!.env.template
+
+# IDE / Editor
+.vscode/
+.idea/
+.sublime-workspace
+.sublime-project
+*.swp
+*.swo
+*~
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# OS
+Thumbs.db
+.Thumbs.db
 
 # vercel
 .vercel
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
 
-# Editor directories and files (Penting agar IDE file spesifik user tidak ter-commit)
-.idea/
-.vscode/*
-!.vscode/settings.json
-!.vscode/tasks.json
-!.vscode/launch.json
-!.vscode/extensions.json
-*.suo
-*.ntvs*
-*.njsproj
-*.sln
-*.sw?
+# dependencies
+lockfile
 
-# Log files
-*.log
+# misc
+.cache/
+.history/
+.husky/
