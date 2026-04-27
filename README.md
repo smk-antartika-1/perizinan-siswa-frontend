@@ -1,122 +1,139 @@
-# Sistem Perizinan Siswa SMK Antartika 1
+# E-Izin Siswa - Frontend Application
 
-Sistem Perizinan Siswa adalah aplikasi web yang dirancang secara profesional untuk memfasilitasi, mendigitalkan, dan mempermudah proses perizinan siswa di SMK Antartika 1 secara efisien dan transparan.
+[![Next.js](https://img.shields.io/badge/next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![React](https://img.shields.io/badge/react-19-blue?style=flat-square&logo=react)](https://react.dev/)
+[![TypeScript](https://img.shields.io/badge/typescript-5.8-3178c6?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+[![Tailwind CSS](https://img.shields.io/badge/tailwind%20css-4.1-38bdf8?style=flat-square&logo=tailwindcss)](https://tailwindcss.com/)
 
-## 🚀 Detail Teknis
+Aplikasi Frontend untuk **Sistem Informasi Perizinan Siswa (E-Izin Siswa)**. Aplikasi ini dikembangkan menggunakan **Next.js** dan menyediakan antarmuka modern yang responsif untuk mengelola, mengajukan, dan memantau status perizinan siswa, dilengkapi dengan fitur otentikasi serta pembuatan QR Code secara otomatis.
 
-Aplikasi ini dibangun menggunakan arsitektur web modern yang menjamin skalabilitas, performa tinggi, dan antarmuka yang ramah pengguna. Teknologi utama yang digunakan meliputi:
+## 🚀 Teknologi yang Digunakan
 
-- **Framework:** [Next.js 14+](https://nextjs.org/) (App Router)
-- **Bahasa Pemrograman:** [TypeScript](https://www.typescriptlang.org/)
-- **Styling UI:** [Tailwind CSS](https://tailwindcss.com/)
-- **State Management:** [Zustand](https://github.com/pmndrs/zustand)
-- **Manajemen & Validasi Form:** [React Hook Form](https://react-hook-form.com/) yang dipadukan dengan [Zod](https://zod.dev/)
-- **Autentikasi:** Sistem autentikasi berbasis Cookie yang aman (Secure Cookie-based Authentication)
+Proyek ini dibangun menggunakan teknologi terkini di ekosistem web development:
 
-## ✨ Fitur Utama
+- **Framework**: [Next.js 15](https://nextjs.org/) (App Router)
+- **UI/Library**: [React 19](https://react.dev/)
+- **Styling**: [Tailwind CSS v4](https://tailwindcss.com/)
+- **Animasi**: [Motion](https://motion.dev/)
+- **Ikon**: [Lucide React](https://lucide.dev/)
+- **Utilitas**:
+  - `date-fns` (Format dan manipulasi tanggal)
+  - `clsx` & `tailwind-merge` (Class mapping dinamis)
+  - `qrcode.react` (Generator QR Code)
+- **Bahasa**: TypeScript
 
-- **Role-Based Access Control (RBAC):** Menyediakan fitur akses berbasis peran (Siswa, Wali Kelas, Guru Piket) dengan antar muka yang disesuaikan secara dinamis.
-- **Alur Persetujuan 2 Tingkat (2-Level Approval Flow):** Memastikan proses verifikasi perizinan terstruktur dengan alur persetujuan: `Siswa` -> `Wali Kelas` -> `Guru Piket`.
-- **Status Real-time:** Siswa dapat melihat progres status pengajuan perizinan mereka kapan saja dengan transparan.
-- **Mobile-first & Responsif:** Desain modern dan responsif yang optimal diakses dari berbagai jenis perangkat, termasuk layar smartphone.
-- **Validasi Data Berlapis:** Menerapkan validasi ketat dari sisi klien (menggunakan Zod) untuk mencegah kekeliruan input pengguna.
+## 📦 Prasyarat Sistem
 
-## 🛠️ Panduan Instalasi dan Cara Menjalankan
+Pastikan perangkat Anda telah terinstal perangkat lunak berikut sebelum menjalankan proyek ini:
 
-Ikuti panduan berikut untuk memasang serta menjalankan aplikasi ini di lingkungan lokal Anda (Development).
+- **Node.js** (Disarankan versi 18.x atau terbaru)
+- **NPM** / **Yarn** / **pnpm** / **Bun**
 
-### Prasyarat Dasar
+## 🛠️ Cara Menjalankan Proyek (Lokal/Development)
 
-Sebelum menjalankan proyek ini, pastikan sistem komputer Anda telah terinstal:
-- [Node.js](https://nodejs.org/) (versi 18.x ke atas direkomendasikan)
-- Package manager seperti `npm`, `yarn`, `pnpm`, atau `bun`
+Ikuti langkah-langkah di bawah ini untuk menjalankan proyek secara lokal:
 
-### Langkah Instalasinya
+1. **Clone repository ini (jika belum)**
 
-1. **Unduh (Clone) / Akses Folder Proyek:**
    ```bash
    git clone <url-repository-anda>
-   cd perizinan-smk1-antartika
+   cd perizinan-siswa-frontend
    ```
 
-2. **Instal seluruh Dependensi (Library):**
-   Gunakan package manager pilihan Anda untuk memuat semuanya.
+2. **Instal seluruh dependensi**
+   Menggunakan NPM:
+
    ```bash
    npm install
-   # atau
-   yarn install
-   # atau
-   pnpm install
-   # atau
-   bun install
    ```
 
-3. **Konfigurasi Environment Variable:**
-   Buat file baru di root (akar folder) proyek bernama `.env.local`, kemudian konfigurasikan variabel rahasia seperti tautan API atau token secret.
-   ```env
-   # Contoh isi file .env.local
-   NEXT_PUBLIC_API_URL=http://localhost:8000/api
-   JWT_SECRET=rahasiakita123
+3. **Konfigurasi Environment Variables**
+   Buat file `.env` atau `.env.local` di root folder dan sesuaikan variabel yang dibutuhkan berdasarkan file `.env.example`:
+
+   ```bash
+   cp .env.example .env.local
    ```
 
-4. **Jalankan Aplikasi:**
-   Setelah proses instalasi selesai, jalankan server mode lokal.
+   _(Pastikan mengisi API Key atau URL backend sistem Anda)._
+
+4. **Jalankan Development Server**
+
    ```bash
    npm run dev
-   # atau
-   yarn dev
-   # atau
-   pnpm dev
-   # atau
-   bun dev
    ```
 
-5. **Lihat di Jendela Browser:**
-   Buka peramban (browser) dan akses laman: [http://localhost:3000](http://localhost:3000). Aplikasi siap digunakan!
+5. **Akses Aplikasi**
+   Buka [http://localhost:3000](http://localhost:3000) di browser Anda untuk melihat hasilnya.
 
-## 📁 Struktur Folder (Opsional)
+## 🏗️ Build & Production
 
-Gambaran umum tata letak dan struktur komponen di dalam aplikasi ini:
+Untuk melakukan build aplikasi ke tahap produksi (Production), jalankan perintah berikut:
 
-```text
-perizinan-smk1-antartika/
-├── app/                  # Titik tumpu Next.js 14 App Router root dan routing halaman
-├── components/           # Direktori komponen-komponen UI React yang digunakan di halaman
-├── hooks/                # Logika custom hooks berulang (reusable logic)
-├── lib/                  # Fungsi utilitas (seperti utils.ts), API clients, atau helper bawaan
-├── store/                # Logika global store dan state management dengan Zustand
-├── types/                # Deklarasi file untuk TypeScript custom typings & interface
-├── public/               # Direktori gambar, font, dan aset statis publik lainnya
-├── .env.local            # File local env (jangan di-commit ke repositori Git)
-├── tailwind.config.ts    # File dasar konfigurasi framework Tailwind
-├── tsconfig.json         # Aturan dan modifikasi compiler untuk TypeScript
-└── package.json          # File manifes yang berisi list meta-data npm
+```bash
+npm run build
 ```
+
+Setelah proses build selesai, jalankan server produksi dengan:
+
+```bash
+npm run start
+```
+
+## 📂 Struktur Proyek Utama
+
+- `/app` - Berisi arsitektur routing (Next.js App Router) dan struktur halaman utama.
+- `/components` - Berisi komponen-komponen antarmuka React yang dapat digunakan berulang (Reusable UI Components).
+- `/context` - Berisi React Context untuk state management global.
+- `/hooks` - Berisi Custom React Hooks.
+- `/lib` - Berisi fungsi utilitas, helper, dan type definitions.
+- `/public` - Berisi aset statis aplikasi (gambar, ikon, manifest).
+- `/context` - Berisi React Context untuk state management global.
+
+## 📝 Script Tersedia
+
+Di dalam direktori proyek, Anda dapat menjalankan perintah-perintah berikut:
+
+- `npm run dev` - Menjalankan aplikasi dalam mode pengembangan lokal.
+- `npm run build` - Membangun aplikasi dan optimasi performa untuk tahap produksi.
+- `npm run start` - Menjalankan aplikasi dari hasil build produksi.
+- `npm run lint` - Menjalankan Next ESLint untuk memeriksa standar kualitas kode.
+
+## ⚙️ Konfigurasi Environment Variables
+
+Buat file `.env.local` di root folder dengan variabel berikut:
+
+```env
+# Backend API Configuration
+NEXT_PUBLIC_API_URL=http://localhost:8000
+NEXT_PUBLIC_API_BASE_PATH=/api
+
+# Application
+NEXT_PUBLIC_APP_NAME=E-Izin Siswa
+NEXT_PUBLIC_APP_VERSION=1.0.0
+```
+
+> **Catatan**: File `.env.local` tidak akan di-track oleh Git. Pastikan `.env.example` ada untuk dokumentasi.
+
+## 🤝 Kontribusi
+
+Kontribusi sangat diterima! Untuk berkontribusi:
+
+1. Fork repository ini
+2. Buat branch fitur (`git checkout -b feature/AmazingFeature`)
+3. Commit perubahan Anda (`git commit -m 'Add some AmazingFeature'`)
+4. Push ke branch (`git push origin feature/AmazingFeature`)
+5. Buka Pull Request
 
 ## 📄 Lisensi
 
-Proyek ini berada di bawah pelindungan lisensi **MIT**.
+Proyek ini dilisensikan di bawah MIT License. Lihat file [LICENSE](LICENSE) untuk detail lebih lanjut.
 
-```text
-MIT License
+## 📞 Dukungan & Feedback
 
-Copyright (c) 2026 Sistem Perizinan Siswa - SMK Antartika 1
+Jika Anda menemukan bug atau memiliki saran, silakan buat issue di repository ini atau hubungi tim development.
 
-Permission is hereby granted, free of charge, to any person obtaining a copy
-of this software and associated documentation files (the "Software"), to deal
-in the Software without restriction, including without limitation the rights
-to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-copies of the Software, and to permit persons to whom the Software is
-furnished to do so, subject to the following conditions:
+---
 
-The above copyright notice and this permission notice shall be included in all
-copies or substantial portions of the Software.
-
-THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-SOFTWARE.
-```
+> **Catatan Penting:** Repository ini merupakan bagian _frontend_ dari ekosistem **E-Izin Siswa**. Pastikan _backend_ sistem Anda telah berjalan dengan baik agar fitur login dan pengajuan izin berfungsi secara normal.
+>
+> Untuk informasi backend, lihat [Backend Repository](https://github.com/your-org/perizinan-siswa-backend) (segera hadir).

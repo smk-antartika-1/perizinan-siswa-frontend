@@ -1,0 +1,13 @@
+{
+  "name": "E-Izin Siswa",
+  "description": "Sistem perizinan keluar-masuk siswa pintar berbasis QR Code dan Real-time tracking untuk sekolah modern.",
+  "requestFramePermissions": [
+    "camera"
+  ],
+  "majorCapabilities": [
+    "QR Code Generation",
+    "QR Code Scanning",
+    "Real-time Approvals",
+    "Data Export"
+  ]
+}
