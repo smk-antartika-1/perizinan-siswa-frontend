@@ -1,8 +1,8 @@
 'use client';
 
 import React, { createContext, useContext, useState, useCallback } from 'react';
-import { User, Permission, UserRole } from '@/lib/types';
-import { MOCK_USERS, MOCK_PERMISSIONS } from '@/lib/mockData';
+import { User, Permission, Notification, UserRole } from '@/lib/types';
+import { MOCK_USERS, MOCK_PERMISSIONS, MOCK_NOTIFICATIONS } from '@/lib/mockData';
 
 interface Toast {
   id: string;
@@ -14,15 +14,20 @@ interface AppContextType {
   // Auth
   currentUser: User | null;
   users: User[];
-  login: (username: string, password: string, expectedRole?: UserRole) => boolean;
+  login: (username: string, password: string) => boolean;
   logout: () => void;
-  register: (data: { name: string; nis: string; kelas: string; password: string }) => boolean;
   isAuthenticated: boolean;
 
   // Permissions
   permissions: Permission[];
   addPermission: (perm: Omit<Permission, 'id' | 'createdAt'>) => void;
   updatePermission: (id: string, updates: Partial<Permission>) => void;
+
+  // Notifications
+  notifications: Notification[];
+  markNotificationRead: (id: string) => void;
+  markAllNotificationsRead: () => void;
+  unreadCount: number;
 
   // Toast
   toasts: Toast[];
@@ -33,21 +38,18 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
-  const [users, setUsers] = useState<User[]>(MOCK_USERS);
+  const [users] = useState<User[]>(MOCK_USERS);
   const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [permissions, setPermissions] = useState<Permission[]>(MOCK_PERMISSIONS);
+  const [notifications, setNotifications] = useState<Notification[]>(MOCK_NOTIFICATIONS);
   const [toasts, setToasts] = useState<Toast[]>([]);
 
-  const login = useCallback((username: string, password: string, expectedRole?: UserRole) => {
+  const login = useCallback((username: string, password: string) => {
     const user = users.find(u => {
-      const matchUsername = u.username === username || u.name.toLowerCase() === username.toLowerCase() || u.nis === username;
+      const matchUsername = u.username === username || u.nis === username;
       return matchUsername && u.password === password;
     });
     if (user) {
-      // If an expected role is provided, ensure it matches
-      if (expectedRole && user.role !== expectedRole) {
-        return false;
-      }
       setCurrentUser(user);
       return true;
     }
@@ -57,27 +59,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const logout = useCallback(() => {
     setCurrentUser(null);
   }, []);
-
-  const register = useCallback((data: { name: string; nis: string; kelas: string; password: string }) => {
-    // Check if username/nis already exists
-    if (users.some(u => u.username === data.nis)) {
-      return false;
-    }
-
-    const newUser: User = {
-      id: `u${Date.now()}`,
-      name: data.name,
-      role: UserRole.SISWA,
-      email: `${data.nis}@sekolah.id`,
-      username: data.nis,
-      password: data.password,
-      nis: data.nis,
-      kelas: data.kelas,
-    };
-
-    setUsers(prev => [...prev, newUser]);
-    return true;
-  }, [users]);
 
   const addPermission = useCallback((perm: Omit<Permission, 'id' | 'createdAt'>) => {
     const newPerm: Permission = {
@@ -91,6 +72,16 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const updatePermission = useCallback((id: string, updates: Partial<Permission>) => {
     setPermissions(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
   }, []);
+
+  const markNotificationRead = useCallback((id: string) => {
+    setNotifications(prev => prev.map(n => n.id === id ? { ...n, read: true } : n));
+  }, []);
+
+  const markAllNotificationsRead = useCallback(() => {
+    setNotifications(prev => prev.map(n => ({ ...n, read: true })));
+  }, []);
+
+  const unreadCount = notifications.filter(n => !n.read).length;
 
   const showToast = useCallback((message: string, type: Toast['type'] = 'success') => {
     const id = Math.random().toString(36).slice(2);
@@ -108,11 +99,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       users,
       login,
       logout,
-      register,
       isAuthenticated: !!currentUser,
       permissions,
       addPermission,
       updatePermission,
+      notifications,
+      markNotificationRead,
+      markAllNotificationsRead,
+      unreadCount,
       toasts,
       showToast,
       removeToast,

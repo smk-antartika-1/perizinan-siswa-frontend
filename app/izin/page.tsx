@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion } from 'motion/react';
-import { ClipboardList, Clock, Bell, ChevronRight, Car } from 'lucide-react';
+import { ClipboardList, Clock, Info, ChevronRight, Car } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
@@ -47,7 +47,7 @@ export default function IzinPage() {
         status: PermissionStatus.PENDING,
         nomorPolisi: nomorPolisi || undefined,
       });
-      showToast('Pengajuan izin berhasil dikirim!', 'success');
+      showToast('Pengajuan izin berhasil dikirim.', 'success');
       setLoading(false);
       router.push('/dashboard');
     }, 800);
@@ -97,7 +97,6 @@ export default function IzinPage() {
                 placeholder="Jelaskan alasan Anda dengan jelas dan singkat..."
                 className="input resize-none"
               />
-              {/* Quick presets */}
               <div className="flex flex-wrap gap-2 mt-2">
                 {reasonPresets.map(p => (
                   <button
@@ -130,7 +129,7 @@ export default function IzinPage() {
               </div>
             </div>
 
-            {/* Nomor Polisi (optional) */}
+            {/* Nomor Polisi */}
             <div>
               <label className="label">
                 <Car size={11} className="inline mr-1" />
@@ -147,7 +146,7 @@ export default function IzinPage() {
 
             {/* Info */}
             <div className="p-4 bg-amber-50 rounded-2xl border border-amber-100 flex gap-3">
-              <Bell size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
+              <Info size={16} className="text-amber-500 flex-shrink-0 mt-0.5" />
               <p className="text-xs text-amber-700 leading-relaxed">
                 Pengajuan akan diteruskan ke <strong>Wali Kelas</strong> untuk disetujui, lalu diverifikasi oleh <strong>Guru Piket</strong> sebelum QR Code diterbitkan.
               </p>

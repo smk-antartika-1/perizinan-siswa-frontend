@@ -4,7 +4,7 @@ import { useAppContext } from '@/context/AppContext';
 import { UserRole } from '@/lib/types';
 
 export function useAuth() {
-  const { currentUser, login, logout, register, isAuthenticated } = useAppContext();
+  const { currentUser, login, logout, isAuthenticated } = useAppContext();
 
   const hasRole = (...roles: UserRole[]) => {
     if (!currentUser) return false;
@@ -17,5 +17,5 @@ export function useAuth() {
     return allowedRoles.includes(currentUser.role);
   };
 
-  return { currentUser, login, logout, register, isAuthenticated, hasRole, canAccess };
+  return { currentUser, login, logout, isAuthenticated, hasRole, canAccess };
 }

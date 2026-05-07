@@ -1,23 +1,25 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, XCircle, ScanLine, QrCode } from 'lucide-react';
+import { CheckCircle, XCircle, ScanLine, QrCode, Camera } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import { Permission, PermissionStatus } from '@/lib/types';
 import { generateQRValue } from '@/lib/utils';
 
 // ============================================================
-// QR Generator
+// QR Generator - generates QR from direct image URL
 // ============================================================
 export function QRGenerator({ permission }: { permission: Permission }) {
   if (permission.status !== PermissionStatus.APPROVED_PIKET) return null;
+
+  const qrValue = generateQRValue(permission);
 
   return (
     <div className="flex flex-col items-center gap-4 p-6 bg-white rounded-2xl border border-slate-200">
       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
         <QRCodeSVG
-          value={generateQRValue(permission)}
+          value={qrValue}
           size={180}
           level="H"
           includeMargin
@@ -36,7 +38,7 @@ export function QRGenerator({ permission }: { permission: Permission }) {
 }
 
 // ============================================================
-// QR Scanner (Simulated)
+// QR Scanner - uses device camera via html5-qrcode
 // ============================================================
 interface QRScannerProps {
   permissions: Permission[];
@@ -48,7 +50,66 @@ export function QRScanner({ permissions, onScanned, onMarkComplete }: QRScannerP
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<'idle' | 'success' | 'invalid'>('idle');
   const [scannedPermission, setScannedPermission] = useState<Permission | null>(null);
+  const [cameraError, setCameraError] = useState<string | null>(null);
+  const scannerRef = useRef<HTMLDivElement>(null);
+  const html5QrRef = useRef<unknown>(null);
 
+  const stopCamera = async () => {
+    if (html5QrRef.current) {
+      try {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const scanner = html5QrRef.current as any;
+        if (scanner.isScanning) {
+          await scanner.stop();
+        }
+      } catch {
+        // ignore
+      }
+      html5QrRef.current = null;
+    }
+    setScanning(false);
+  };
+
+  const startCamera = async () => {
+    setCameraError(null);
+    setResult('idle');
+    setScannedPermission(null);
+    setScanning(true);
+
+    try {
+      const { Html5Qrcode } = await import('html5-qrcode');
+      const scannerId = 'qr-reader';
+      const scanner = new Html5Qrcode(scannerId);
+      html5QrRef.current = scanner;
+
+      await scanner.start(
+        { facingMode: 'environment' },
+        { fps: 10, qrbox: { width: 220, height: 220 } },
+        (decodedText: string) => {
+          // Try to match permission by ID in scanned URL
+          const idMatch = decodedText.match(/P-\d+/);
+          const permId = idMatch ? idMatch[0] : null;
+          const perm = permId ? permissions.find(p => p.id === permId && p.status === PermissionStatus.APPROVED_PIKET) : null;
+
+          if (perm) {
+            setScannedPermission(perm);
+            setResult('success');
+            onScanned(perm);
+          } else {
+            setResult('invalid');
+            onScanned(null);
+          }
+          stopCamera();
+        },
+        () => { /* ignore scan failures */ }
+      );
+    } catch {
+      setCameraError('Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan.');
+      setScanning(false);
+    }
+  };
+
+  // Simulate scan (fallback when camera is not available)
   const simulateScan = () => {
     setScanning(true);
     setResult('idle');
@@ -68,6 +129,11 @@ export function QRScanner({ permissions, onScanned, onMarkComplete }: QRScannerP
     }, 2000);
   };
 
+  useEffect(() => {
+    return () => { stopCamera(); };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const handleMarkComplete = () => {
     if (scannedPermission) {
       onMarkComplete(scannedPermission.id);
@@ -77,7 +143,7 @@ export function QRScanner({ permissions, onScanned, onMarkComplete }: QRScannerP
   };
 
   const resultConfig = {
-    success: { bg: 'bg-emerald-50 border-emerald-300', icon: CheckCircle, iconColor: 'text-emerald-500', text: 'QR Code Valid!', textColor: 'text-emerald-700' },
+    success: { bg: 'bg-emerald-50 border-emerald-300', icon: CheckCircle, iconColor: 'text-emerald-500', text: 'QR Code Valid', textColor: 'text-emerald-700' },
     invalid: { bg: 'bg-red-50 border-red-300', icon: XCircle, iconColor: 'text-red-500', text: 'QR Code Tidak Valid', textColor: 'text-red-700' },
     idle: { bg: 'bg-slate-50 border-slate-200', icon: QrCode, iconColor: 'text-slate-300', text: 'Siap Scan', textColor: 'text-slate-400' },
   }[result];
@@ -85,7 +151,7 @@ export function QRScanner({ permissions, onScanned, onMarkComplete }: QRScannerP
   return (
     <div className="max-w-sm mx-auto flex flex-col items-center gap-6">
       {/* Scanner Frame */}
-      <div className={`relative w-72 h-72 rounded-3xl border-2 ${resultConfig.bg} flex items-center justify-center overflow-hidden transition-all duration-500`}>
+      <div ref={scannerRef} className={`relative w-72 h-72 rounded-3xl border-2 ${resultConfig.bg} flex items-center justify-center overflow-hidden transition-all duration-500`}>
         {/* Corner decorations */}
         {['top-2 left-2', 'top-2 right-2', 'bottom-2 left-2', 'bottom-2 right-2'].map((pos, i) => (
           <div key={i} className={`absolute ${pos} w-7 h-7 border-blue-500 ${
@@ -96,21 +162,12 @@ export function QRScanner({ permissions, onScanned, onMarkComplete }: QRScannerP
           }`} />
         ))}
 
+        {/* Camera view */}
+        <div id="qr-reader" className={`absolute inset-0 ${scanning ? 'block' : 'hidden'}`} />
+
         <AnimatePresence mode="wait">
-          {scanning ? (
-            <motion.div key="scanning" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col items-center gap-3">
-              <div className="w-12 h-12 border-4 border-blue-200 border-t-blue-600 rounded-full animate-spin" />
-              <p className="text-sm text-blue-600 font-medium">Memindai...</p>
-              {/* Scanning line */}
-              <motion.div
-                animate={{ top: ['15%', '85%', '15%'] }}
-                transition={{ duration: 1.5, repeat: Infinity, ease: 'linear' }}
-                className="absolute left-4 right-4 h-0.5 bg-blue-500/60 shadow-[0_0_8px_2px_rgba(99,102,241,0.4)]"
-                style={{ position: 'absolute' }}
-              />
-            </motion.div>
-          ) : (
-            <motion.div key="result" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center gap-3 p-6 text-center">
+          {!scanning && (
+            <motion.div key="result" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center gap-3 p-6 text-center relative z-10">
               <resultConfig.icon size={56} className={resultConfig.iconColor} />
               <p className={`font-bold text-sm ${resultConfig.textColor}`}>{resultConfig.text}</p>
               {scannedPermission && (
@@ -125,15 +182,30 @@ export function QRScanner({ permissions, onScanned, onMarkComplete }: QRScannerP
         </AnimatePresence>
       </div>
 
+      {cameraError && (
+        <p className="text-xs text-red-500 text-center">{cameraError}</p>
+      )}
+
       {/* Buttons */}
-      <button
-        onClick={simulateScan}
-        disabled={scanning}
-        className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-colors shadow-xl shadow-blue-500/25 disabled:opacity-60 disabled:cursor-not-allowed text-base"
-      >
-        <ScanLine size={22} />
-        {scanning ? 'Memindai QR Code...' : 'Simulasi Scan QR'}
-      </button>
+      <div className="w-full space-y-3">
+        <button
+          onClick={startCamera}
+          disabled={scanning}
+          className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-colors shadow-xl shadow-blue-500/25 disabled:opacity-60 disabled:cursor-not-allowed text-base"
+        >
+          <Camera size={22} />
+          {scanning ? 'Memindai...' : 'Scan dengan Kamera'}
+        </button>
+
+        <button
+          onClick={simulateScan}
+          disabled={scanning}
+          className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-white text-slate-700 font-semibold rounded-2xl border border-slate-200 hover:bg-slate-50 transition-colors disabled:opacity-60 disabled:cursor-not-allowed text-sm"
+        >
+          <ScanLine size={18} />
+          Simulasi Scan (Demo)
+        </button>
+      </div>
 
       {result === 'success' && scannedPermission && (
         <button

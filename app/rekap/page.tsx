@@ -8,7 +8,7 @@ import StatusBadge from '@/components/ui/StatusBadge';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { useAppContext } from '@/context/AppContext';
-import { UserRole, PermissionStatus } from '@/lib/types';
+import { UserRole } from '@/lib/types';
 import { getPermissionStats, groupByKelas } from '@/lib/utils';
 
 export default function RekapPage() {
@@ -32,7 +32,7 @@ export default function RekapPage() {
   const grouped = groupByKelas(permissions);
 
   const handleExport = () => {
-    showToast('Export CSV berhasil diunduh!', 'success');
+    showToast('Export CSV berhasil diunduh.', 'success');
   };
 
   const SUMMARY_STATS = [
@@ -73,23 +73,26 @@ export default function RekapPage() {
 
       {/* View Toggle */}
       <div className="flex items-center gap-2 mb-6">
-        {(['summary', 'table'] as const).map(v => (
+        {([
+          { key: 'summary' as const, label: 'Per Kelas', icon: Users },
+          { key: 'table' as const, label: 'Semua Data', icon: BarChart3 },
+        ]).map(v => (
           <button
-            key={v}
-            onClick={() => setView(v)}
-            className={`px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
-              view === v
+            key={v.key}
+            onClick={() => setView(v.key)}
+            className={`flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all ${
+              view === v.key
                 ? 'bg-blue-600 text-white shadow-md shadow-blue-500/20'
                 : 'bg-white border border-slate-200 text-slate-500 hover:border-blue-300'
             }`}
           >
-            {v === 'summary' ? '📊 Per Kelas' : '📋 Semua Data'}
+            <v.icon size={14} />
+            {v.label}
           </button>
         ))}
       </div>
 
       {view === 'summary' ? (
-        // Per-class summary cards
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {Object.entries(grouped).map(([kelas, items]) => {
             const s = getPermissionStats(items);
@@ -119,7 +122,6 @@ export default function RekapPage() {
                   ))}
                 </div>
 
-                {/* Recent in this kelas */}
                 <div className="space-y-1.5">
                   {items.slice(0, 2).map(p => (
                     <div key={p.id} className="flex items-center justify-between text-xs py-1">

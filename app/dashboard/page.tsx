@@ -35,12 +35,12 @@ export default function DashboardPage() {
       <div className="page-header">
         <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }}>
           <h1 className="page-title">
-            Selamat datang, {currentUser.name.split(' ')[0]}! 👋
+            Selamat datang, {currentUser.name.split(' ')[0]}
           </h1>
           <p className="page-subtitle">
             {ROLE_LABELS[currentUser.role]}
-            {currentUser.kelas ? ` · ${currentUser.kelas}` : ''}
-            {currentUser.nip ? ` · ${currentUser.nip}` : ''}
+            {currentUser.kelas ? ` - ${currentUser.kelas}` : ''}
+            {currentUser.nip ? ` - ${currentUser.nip}` : ''}
           </p>
         </motion.div>
       </div>
@@ -55,7 +55,7 @@ export default function DashboardPage() {
           <AlertCircle size={20} className="text-amber-500 flex-shrink-0" />
           <div className="flex-1">
             <p className="text-sm font-semibold text-amber-800">
-              Ada {pendingForMe.length} pengajuan izin menunggu persetujuan Anda
+              Terdapat {pendingForMe.length} pengajuan izin menunggu persetujuan Anda
             </p>
           </div>
           <Link href="/approval" className="text-xs font-bold text-amber-700 hover:underline flex items-center gap-1">
@@ -109,8 +109,8 @@ export default function DashboardPage() {
               </div>
             )}
 
-            {/* CTA Card */}
-            <div className="bg-gradient-to-br from-blue-600 to-red-600 rounded-2xl p-5 text-white relative overflow-hidden">
+            {/* Info Card */}
+            <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-5 text-white relative overflow-hidden">
               <div className="absolute -right-6 -bottom-6 w-28 h-28 bg-white/10 rounded-full" />
               <TrendingUp size={24} className="mb-3 relative z-10" />
               <p className="font-bold relative z-10">Total {stats.total} perizinan</p>
