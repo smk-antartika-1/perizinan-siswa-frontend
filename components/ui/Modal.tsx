@@ -54,7 +54,7 @@ export function Toast({ message, type, onClose }: ToastProps) {
   };
   const Icon = icons[type];
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-lg ${colors[type]} animate-in slide-in-from-right`}>
+    <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-lg ${colors[type]}`}>
       <Icon size={18} />
       <span className="text-sm font-medium">{message}</span>
       <button onClick={onClose} className="ml-2 opacity-60 hover:opacity-100"><X size={14} /></button>

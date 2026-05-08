@@ -25,11 +25,11 @@ export interface User {
   name: string;
   role: UserRole;
   email: string;
-  username: string;  // Added username
-  password: string;  // Added password
-  nis?: string;      // Added nis for siswa
-  kelas?: string;    // For siswa & wali_kelas
-  nip?: string;      // For guru/staff
+  username: string;
+  password: string;
+  nis?: string;
+  kelas?: string;
+  nip?: string;
   photoUrl?: string;
 }
 
@@ -51,6 +51,7 @@ export interface Permission {
   rejectedReason?: string;
   nomorPolisi?: string;
   qrCode?: string;
+  suratUrl?: string;
 }
 
 export interface Student {
@@ -62,6 +63,15 @@ export interface Student {
   waliKelasId: string;
 }
 
+export interface Notification {
+  id: string;
+  title: string;
+  message: string;
+  timestamp: string;
+  read: boolean;
+  type: 'info' | 'warning' | 'success' | 'error';
+}
+
 export interface NavItem {
   id: string;
   label: string;
@@ -70,7 +80,9 @@ export interface NavItem {
   roles: UserRole[];
 }
 
-// Role display info
+// ============================================================
+// CONSTANTS
+// ============================================================
 export const ROLE_LABELS: Record<UserRole, string> = {
   [UserRole.SISWA]: 'Siswa',
   [UserRole.WALI_KELAS]: 'Wali Kelas',

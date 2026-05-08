@@ -1,4 +1,4 @@
-import { UserRole, PermissionStatus, User, Permission, Student } from './types';
+import { UserRole, PermissionStatus, User, Permission, Student, Notification } from './types';
 
 // ============================================================
 // MOCK USERS
@@ -16,7 +16,7 @@ export const MOCK_USERS: User[] = [
 ];
 
 // ============================================================
-// MOCK STUDENTS (detail)
+// MOCK STUDENTS
 // ============================================================
 export const MOCK_STUDENTS: Student[] = [
   { id: 's1', name: 'Budi Santoso', kelas: 'XII IPA 1', email: 'budi@sekolah.id', nis: '2024001', waliKelasId: 'u5' },
@@ -45,6 +45,7 @@ export const MOCK_PERMISSIONS: Permission[] = [
     status: PermissionStatus.COMPLETED, createdAt: d(-6),
     approvedByWaliId: 'u5', approvedByWaliName: 'Ibu Ratna Sari',
     approvedByPiketId: 'u7', approvedByPiketName: 'Pak Andi Wijaya',
+    suratUrl: '/surat/P-001.png',
   },
   {
     id: 'P-002', studentId: 'u2', studentName: 'Siti Rahayu', kelas: 'XII IPA 1',
@@ -53,6 +54,7 @@ export const MOCK_PERMISSIONS: Permission[] = [
     status: PermissionStatus.APPROVED_PIKET, createdAt: d(-3),
     approvedByWaliId: 'u5', approvedByWaliName: 'Ibu Ratna Sari',
     approvedByPiketId: 'u7', approvedByPiketName: 'Pak Andi Wijaya',
+    suratUrl: '/surat/P-002.png',
   },
   {
     id: 'P-003', studentId: 'u3', studentName: 'Ahmad Fauzi', kelas: 'XII IPS 2',
@@ -88,5 +90,82 @@ export const MOCK_PERMISSIONS: Permission[] = [
     approvedByWaliId: 'u6', approvedByWaliName: 'Bapak Hendro',
     approvedByPiketId: 'u7', approvedByPiketName: 'Pak Andi Wijaya',
     nomorPolisi: 'B 1234 XYZ',
+    suratUrl: '/surat/P-007.png',
   },
+];
+
+// ============================================================
+// MOCK NOTIFICATIONS
+// ============================================================
+export const MOCK_NOTIFICATIONS: Notification[] = [
+  {
+    id: 'n1',
+    title: 'Izin Disetujui',
+    message: 'Pengajuan izin P-002 atas nama Siti Rahayu telah disetujui oleh Guru Piket.',
+    timestamp: d(-1),
+    read: false,
+    type: 'success',
+  },
+  {
+    id: 'n2',
+    title: 'Pengajuan Izin Baru',
+    message: 'Budi Santoso mengajukan izin keluar untuk keperluan kompetisi olimpiade.',
+    timestamp: d(0),
+    read: false,
+    type: 'info',
+  },
+  {
+    id: 'n3',
+    title: 'Izin Ditolak',
+    message: 'Pengajuan izin P-005 atas nama Dewi Kartika ditolak. Alasan tidak memenuhi syarat.',
+    timestamp: d(-8),
+    read: true,
+    type: 'error',
+  },
+  {
+    id: 'n4',
+    title: 'Siswa Kembali',
+    message: 'Budi Santoso telah kembali ke sekolah sesuai jadwal estimasi.',
+    timestamp: d(-3),
+    read: true,
+    type: 'info',
+  },
+  {
+    id: 'n5',
+    title: 'Persetujuan Wali Kelas',
+    message: 'Izin P-003 atas nama Ahmad Fauzi telah disetujui oleh Wali Kelas dan menunggu verifikasi Guru Piket.',
+    timestamp: d(-1),
+    read: false,
+    type: 'warning',
+  },
+  {
+    id: 'n6',
+    title: 'Pengajuan Izin Baru',
+    message: 'Siti Rahayu mengajukan izin keluar untuk latihan paduan suara tingkat provinsi.',
+    timestamp: d(1),
+    read: false,
+    type: 'info',
+  },
+  {
+    id: 'n7',
+    title: 'QR Code Diterbitkan',
+    message: 'QR Code untuk izin P-002 telah diterbitkan. Siswa dapat menunjukkan QR kepada petugas.',
+    timestamp: d(-2),
+    read: true,
+    type: 'success',
+  },
+];
+
+// ============================================================
+// MOCK EXCEL IMPORT DATA (for admin preview)
+// ============================================================
+export const MOCK_EXCEL_DATA = [
+  { no: 1, nama: 'Andi Prasetyo', nis: '2024011', kelas: 'X IPA 1', email: 'andi.p@sekolah.id' },
+  { no: 2, nama: 'Bella Safitri', nis: '2024012', kelas: 'X IPA 1', email: 'bella.s@sekolah.id' },
+  { no: 3, nama: 'Cahya Dewi', nis: '2024013', kelas: 'X IPA 2', email: 'cahya.d@sekolah.id' },
+  { no: 4, nama: 'Dimas Arya', nis: '2024014', kelas: 'X IPS 1', email: 'dimas.a@sekolah.id' },
+  { no: 5, nama: 'Eka Putri', nis: '2024015', kelas: 'XI IPA 1', email: 'eka.p@sekolah.id' },
+  { no: 6, nama: 'Firman Hadi', nis: '2024016', kelas: 'XI IPA 2', email: 'firman.h@sekolah.id' },
+  { no: 7, nama: 'Gita Nirmala', nis: '2024017', kelas: 'XI IPS 1', email: 'gita.n@sekolah.id' },
+  { no: 8, nama: 'Hendra Kusuma', nis: '2024018', kelas: 'XII IPA 1', email: 'hendra.k@sekolah.id' },
 ];

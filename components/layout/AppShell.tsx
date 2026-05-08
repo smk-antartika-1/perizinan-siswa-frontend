@@ -2,22 +2,33 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Menu, Bell, QrCode } from 'lucide-react';
+import { Menu } from 'lucide-react';
+import Link from 'next/link';
 import Sidebar from './Sidebar';
+import NotificationDropdown from './NotificationDropdown';
 import { ToastContainer } from '@/components/ui/Modal';
 import { useAppContext } from '@/context/AppContext';
 import { useAuth } from '@/hooks/useAuth';
-import { usePermissions } from '@/hooks/usePermissions';
+
+const PAGE_TITLES: Record<string, string> = {
+  '/dashboard': 'Dashboard',
+  '/izin': 'Ajukan Izin',
+  '/history': 'Riwayat Perizinan',
+  '/approval': 'Persetujuan Izin',
+  '/students': 'Data Siswa',
+  '/scan-qr': 'Scan QR Code',
+  '/profile': 'Profil Pengguna',
+  '/notifications': 'Notifikasi',
+  '/admin': 'Panel Administrasi',
+};
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mobileOpen, setMobileOpen] = useState(false);
   const { toasts, removeToast } = useAppContext();
-  const { isAuthenticated } = useAuth();
-  const { pendingForMe } = usePermissions();
+  const { isAuthenticated, currentUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
 
-  // Redirect to login if not authenticated
   useEffect(() => {
     if (!isAuthenticated && pathname !== '/login') {
       router.push('/login');
@@ -26,16 +37,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) return null;
 
-  // Page title mapping
-  const PAGE_TITLES: Record<string, string> = {
-    '/dashboard': 'Dashboard',
-    '/izin': 'Ajukan Izin',
-    '/history': 'Riwayat Perizinan',
-    '/approval': 'Persetujuan Izin',
-    '/students': 'Data Siswa',
-    '/rekap': 'Rekap Data',
-    '/scan-qr': 'Scan QR Code',
-  };
   const pageTitle = PAGE_TITLES[pathname] || 'E-Izin Siswa';
 
   return (
@@ -55,7 +56,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       )}
 
-      {/* Main */}
+      {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Top Header */}
         <header className="flex-shrink-0 bg-white border-b border-slate-200 px-4 md:px-8 py-4 flex items-center justify-between">
@@ -74,16 +75,13 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
             </div>
           </div>
           <div className="flex items-center gap-3">
-            <div className="relative cursor-pointer group">
-              <div className="p-2 rounded-xl hover:bg-slate-100 transition-colors">
-                <Bell size={20} className="text-slate-500" />
-              </div>
-              {pendingForMe.length > 0 && (
-                <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center">
-                  {pendingForMe.length}
-                </span>
-              )}
-            </div>
+            <NotificationDropdown />
+            <Link
+              href="/profile"
+              className="w-9 h-9 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-sm hover:bg-blue-700 transition-colors"
+            >
+              {currentUser?.name.charAt(0) || 'U'}
+            </Link>
           </div>
         </header>
 
