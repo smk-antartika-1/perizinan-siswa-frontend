@@ -30,7 +30,17 @@ export function usePermissions() {
       );
     }
     if (currentUser.role === UserRole.GURU_PIKET || currentUser.role === UserRole.ADMIN) {
+      // Normal queue: already approved by wali kelas
       return permissions.filter(p => p.status === PermissionStatus.APPROVED_WALI);
+    }
+    return [];
+  })();
+
+  // Bypass-eligible: PENDING permissions that Guru Piket can directly approve (urgent)
+  const bypassEligible = (() => {
+    if (!currentUser) return [];
+    if (currentUser.role === UserRole.GURU_PIKET || currentUser.role === UserRole.ADMIN) {
+      return permissions.filter(p => p.status === PermissionStatus.PENDING);
     }
     return [];
   })();
@@ -113,6 +123,48 @@ export function usePermissions() {
     });
   };
 
+  // Guru Piket bypasses wali kelas approval for urgent cases
+  const approveBypassWali = (id: string, urgencyReason: string, nomorPolisi?: string) => {
+    if (!currentUser) return;
+    const nowStr = new Date().toISOString();
+    const targetPerm = permissions.find(p => p.id === id);
+    if (!targetPerm) return;
+
+    const bypassComment = {
+      id: `c-${Math.random().toString(36).substring(2, 9)}`,
+      userName: currentUser.name,
+      userRole: currentUser.role,
+      text: `[BYPASS DARURAT] ${urgencyReason}`,
+      timestamp: nowStr,
+    };
+
+    const newComments = [...(targetPerm.comments || []), bypassComment];
+
+    const newAudit = [
+      ...(targetPerm.auditLog || []),
+      {
+        id: `a-${Math.random().toString(36).substring(2, 9)}`,
+        action: 'Disetujui Langsung (Bypass Wali Kelas)',
+        actorName: currentUser.name,
+        actorRole: currentUser.role,
+        timestamp: nowStr,
+        details: `Alasan darurat: "${urgencyReason}"`,
+      }
+    ];
+
+    updatePermission(id, {
+      status: PermissionStatus.APPROVED_PIKET,
+      approvedByWaliId: 'BYPASS',
+      approvedByWaliName: `Bypass oleh ${currentUser.name}`,
+      approvedByPiketId: currentUser.id,
+      approvedByPiketName: currentUser.name,
+      qrCode: `QR-CODE-${id}`,
+      nomorPolisi: nomorPolisi || targetPerm.nomorPolisi,
+      comments: newComments,
+      auditLog: newAudit,
+    });
+  };
+
   const reject = (id: string, reason?: string) => {
     if (!currentUser) return;
     const nowStr = new Date().toISOString();
@@ -182,10 +234,12 @@ export function usePermissions() {
     permissions,
     myPermissions,
     pendingForMe,
+    bypassEligible,
     addPermission,
     updatePermission,
     approveAsWali,
     approveAsPiket,
+    approveBypassWali,
     reject,
     markCompleted,
     activePermission,

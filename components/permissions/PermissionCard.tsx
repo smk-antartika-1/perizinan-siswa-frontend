@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, 
-  QrCode, Eye, Send, AlertCircle, Calendar, ArrowRight 
+  QrCode, Eye, AlertCircle, Calendar, ArrowRight, Zap 
 } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Permission, PermissionStatus, UserRole } from '@/lib/types';
@@ -18,6 +18,7 @@ interface PermissionCardProps {
   permission: Permission;
   onApprove?: (id: string, comment?: string) => void;
   onReject?: (id: string, reason?: string) => void;
+  onBypassApprove?: (id: string, urgencyReason: string) => void;
   userRole?: UserRole;
   showActions?: boolean;
 }
@@ -26,6 +27,7 @@ export default function PermissionCard({
   permission: p,
   onApprove,
   onReject,
+  onBypassApprove,
   userRole,
   showActions = false,
 }: PermissionCardProps) {
@@ -36,6 +38,8 @@ export default function PermissionCard({
   const [qrOpen, setQrOpen] = useState(false);
   const [commentText, setCommentText] = useState('');
   const [rejectOpen, setRejectOpen] = useState(false);
+  const [bypassOpen, setBypassOpen] = useState(false);
+  const [bypassReason, setBypassReason] = useState('');
 
   // Find Student NIS for global details modal
   const studentUser = users.find(u => u.name === p.studentName || u.id === p.studentId);
@@ -253,7 +257,7 @@ export default function PermissionCard({
             </div>
           )}
 
-          <div className="flex gap-2 w-full">
+          <div className="flex gap-2 w-full flex-wrap">
             {/* View Details Redirect button (Universal CTA) */}
             <button
               onClick={() => router.push(`/izin/${p.id}`)}
@@ -290,6 +294,17 @@ export default function PermissionCard({
                   Setujui
                 </button>
               </>
+            )}
+
+            {/* Bypass Button — only shown when onBypassApprove is provided and status is PENDING */}
+            {onBypassApprove && showActions && p.status === PermissionStatus.PENDING && (
+              <button
+                onClick={() => { setBypassReason(''); setBypassOpen(true); }}
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-amber-400 bg-amber-50 text-amber-700 text-xs font-bold hover:bg-amber-100 transition-all shadow-sm select-none"
+              >
+                <Zap size={13} className="fill-amber-400" />
+                Setujui Bypass (Darurat)
+              </button>
             )}
           </div>
         </div>
@@ -344,7 +359,57 @@ export default function PermissionCard({
               disabled={!commentText.trim()}
               className="py-2.5 rounded-xl bg-red-600 disabled:opacity-50 text-white text-xs font-bold hover:bg-red-700 transition-colors shadow-md shadow-red-500/15"
             >
-              Kirim & Tolak Izin
+              Kirim &amp; Tolak Izin
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Bypass Darurat Modal */}
+      <Modal isOpen={bypassOpen} onClose={() => setBypassOpen(false)} title="⚡ Persetujuan Bypass Darurat" size="sm">
+        <div className="space-y-4">
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl flex gap-2 text-xs text-amber-800">
+            <Zap size={16} className="flex-shrink-0 fill-amber-400 text-amber-600" />
+            <div>
+              <p className="font-bold mb-0.5">Tindakan ini melewati persetujuan Wali Kelas.</p>
+              <p>Gunakan hanya untuk kondisi darurat mendesak. Alasan wajib dicatat dan akan tercatat di audit log perizinan.</p>
+            </div>
+          </div>
+
+          <div>
+            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block mb-1.5">Alasan Urgensi / Darurat <span className="text-red-500">*</span></label>
+            <textarea
+              rows={3}
+              value={bypassReason}
+              onChange={e => setBypassReason(e.target.value)}
+              placeholder="Contoh: Orang tua siswa dalam kondisi kritis, keperluan medis segera, dll..."
+              className="w-full px-4 py-3 rounded-xl border border-amber-200 focus:border-amber-400 focus:ring-4 focus:ring-amber-400/10 outline-none resize-none text-xs bg-amber-50/40"
+              autoFocus
+            />
+            {bypassReason.trim().length === 0 && (
+              <p className="text-[10px] text-red-500 font-semibold mt-1">Wajib diisi sebelum melanjutkan</p>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <button
+              onClick={() => setBypassOpen(false)}
+              className="py-2.5 rounded-xl border border-slate-200 text-slate-600 text-xs font-semibold hover:bg-slate-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              onClick={() => {
+                if (!bypassReason.trim()) return;
+                onBypassApprove?.(p.id, bypassReason.trim());
+                setBypassOpen(false);
+                setBypassReason('');
+              }}
+              disabled={!bypassReason.trim()}
+              className="py-2.5 rounded-xl bg-amber-500 disabled:opacity-50 text-white text-xs font-bold hover:bg-amber-600 transition-colors shadow-md shadow-amber-500/20 flex items-center justify-center gap-1.5"
+            >
+              <Zap size={12} className="fill-white" />
+              Konfirmasi Bypass
             </button>
           </div>
         </div>
