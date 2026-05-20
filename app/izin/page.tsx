@@ -17,6 +17,7 @@ export default function IzinPage() {
   const router = useRouter();
 
   const [reason, setReason] = useState('');
+  const [category, setCategory] = useState<'sakit' | 'keperluan' | 'dispensasi' | 'lainnya'>('keperluan');
   const [nomorPolisi, setNomorPolisi] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -43,9 +44,12 @@ export default function IzinPage() {
         kelas: currentUser.kelas || '',
         reason,
         departureTime: new Date().toISOString(),
-        estimatedReturnTime: new Date(Date.now() + 2 * 3600000).toISOString(),
+        estimatedReturnTime: category === 'sakit'
+          ? new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
+          : new Date(Date.now() + 2 * 3600000).toISOString(),
         status: PermissionStatus.PENDING,
         nomorPolisi: nomorPolisi || undefined,
+        category,
       });
       showToast('Pengajuan izin berhasil dikirim.', 'success');
       setLoading(false);
@@ -54,11 +58,11 @@ export default function IzinPage() {
   };
 
   const reasonPresets = [
-    'Keperluan Keluarga',
-    'Sakit / Periksa Dokter',
-    'Urusan Administrasi',
-    'Kompetisi / Lomba',
-    'Kegiatan Ekstrakurikuler',
+    { label: 'Keperluan Keluarga', category: 'keperluan' as const },
+    { label: 'Sakit / Periksa Dokter', category: 'sakit' as const },
+    { label: 'Urusan Administrasi', category: 'keperluan' as const },
+    { label: 'Kompetisi / Lomba', category: 'dispensasi' as const },
+    { label: 'Kegiatan Ekstrakurikuler', category: 'dispensasi' as const },
   ];
 
   return (
@@ -86,6 +90,22 @@ export default function IzinPage() {
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Kategori Izin */}
+            <div>
+              <label className="label">Kategori Izin <span className="text-red-400">*</span></label>
+              <select
+                required
+                value={category}
+                onChange={e => setCategory(e.target.value as any)}
+                className="input"
+              >
+                <option value="keperluan">Keperluan Keluarga / Pribadi</option>
+                <option value="sakit">Sakit (Tidak Wajib Kembali Hari Ini)</option>
+                <option value="dispensasi">Dispensasi Kegiatan Sekolah (OSIS / Lomba)</option>
+                <option value="lainnya">Lainnya</option>
+              </select>
+            </div>
+
             {/* Reason */}
             <div>
               <label className="label">Alasan Izin <span className="text-red-400">*</span></label>
@@ -100,12 +120,15 @@ export default function IzinPage() {
               <div className="flex flex-wrap gap-2 mt-2">
                 {reasonPresets.map(p => (
                   <button
-                    key={p}
+                    key={p.label}
                     type="button"
-                    onClick={() => setReason(p)}
-                    className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-blue-100 hover:text-blue-700 text-slate-500 transition-colors font-medium"
+                    onClick={() => {
+                      setReason(p.label);
+                      setCategory(p.category);
+                    }}
+                    className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-blue-100 hover:text-blue-700 text-slate-500 transition-colors font-medium animate-transition"
                   >
-                    {p}
+                    {p.label}
                   </button>
                 ))}
               </div>
@@ -124,7 +147,7 @@ export default function IzinPage() {
                 <label className="label">Estimasi Kembali</label>
                 <div className="input bg-slate-50 flex items-center gap-2 cursor-not-allowed text-slate-500">
                   <Clock size={15} />
-                  <span>+2 Jam</span>
+                  <span>{category === 'sakit' ? 'Selesai KBM' : '+2 Jam'}</span>
                 </div>
               </div>
             </div>

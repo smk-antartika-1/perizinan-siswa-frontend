@@ -9,6 +9,7 @@ import NotificationDropdown from './NotificationDropdown';
 import { ToastContainer } from '@/components/ui/Modal';
 import { useAppContext } from '@/context/AppContext';
 import { useAuth } from '@/hooks/useAuth';
+import StudentDetailModal from '@/components/ui/StudentDetailModal';
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -20,6 +21,7 @@ const PAGE_TITLES: Record<string, string> = {
   '/profile': 'Profil Pengguna',
   '/notifications': 'Notifikasi',
   '/admin': 'Panel Administrasi',
+  '/kelola-qr': 'Kelola QR Code',
 };
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
@@ -37,7 +39,10 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
   if (!isAuthenticated) return null;
 
-  const pageTitle = PAGE_TITLES[pathname] || 'E-Izin Siswa';
+  let pageTitle = PAGE_TITLES[pathname] || 'E-Izin Siswa';
+  if (pathname.startsWith('/izin/') && pathname !== '/izin') {
+    pageTitle = 'Detail Perizinan Siswa';
+  }
 
   return (
     <div className="flex h-screen bg-slate-50 overflow-hidden">
@@ -91,6 +96,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
         </div>
       </main>
 
+      <StudentDetailModal />
       <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );

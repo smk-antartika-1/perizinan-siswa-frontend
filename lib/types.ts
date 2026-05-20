@@ -33,6 +33,23 @@ export interface User {
   photoUrl?: string;
 }
 
+export interface Comment {
+  id: string;
+  userName: string;
+  userRole: UserRole;
+  text: string;
+  timestamp: string;
+}
+
+export interface AuditLogEntry {
+  id: string;
+  action: string;
+  actorName: string;
+  actorRole: UserRole;
+  timestamp: string;
+  details?: string;
+}
+
 export interface Permission {
   id: string;
   studentId: string;
@@ -52,6 +69,9 @@ export interface Permission {
   nomorPolisi?: string;
   qrCode?: string;
   suratUrl?: string;
+  category?: 'sakit' | 'keperluan' | 'dispensasi' | 'lainnya';
+  comments?: Comment[];
+  auditLog?: AuditLogEntry[];
 }
 
 export interface Student {
@@ -70,6 +90,7 @@ export interface Notification {
   timestamp: string;
   read: boolean;
   type: 'info' | 'warning' | 'success' | 'error';
+  permissionId?: string;
 }
 
 export interface NavItem {
