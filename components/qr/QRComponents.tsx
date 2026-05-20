@@ -77,41 +77,66 @@ export function QRScanner({
     setScannedPermission(null);
     setScanning(true);
 
+    // Safari/iOS strict check: navigator.mediaDevices is undefined on HTTP (non-localhost)
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      setCameraError(
+        "Browser memblokir akses kamera. Pada iPhone/Safari, Anda WAJIB menggunakan HTTPS (atau localhost) untuk membuka kamera.",
+      );
+      setScanning(false);
+      return;
+    }
+
+    // Wait for the next tick to ensure the DOM has updated and #qr-reader is visible
+    await new Promise((resolve) => setTimeout(resolve, 100));
+
     try {
       const { Html5Qrcode } = await import("html5-qrcode");
       const scannerId = "qr-reader";
       const scanner = new Html5Qrcode(scannerId);
       html5QrRef.current = scanner;
 
-      await scanner.start(
-        { facingMode: "environment" },
-        { fps: 10, qrbox: { width: 220, height: 220 } },
-        (decodedText: string) => {
-          // Try to match permission by exact backend UUID/id embedded in scanned URL
-          const perm =
-            permissions.find(
-              (p) =>
-                decodedText.includes(p.id) &&
-                p.status === PermissionStatus.APPROVED_PIKET,
-            ) || null;
+      const onScanSuccess = (decodedText: string) => {
+        const perm =
+          permissions.find(
+            (p) =>
+              decodedText.includes(p.id) &&
+              p.status === PermissionStatus.APPROVED_PIKET,
+          ) || null;
 
-          if (perm) {
-            setScannedPermission(perm);
-            setResult("success");
-            onScanned(perm);
-          } else {
-            setResult("invalid");
-            onScanned(null);
-          }
-          stopCamera();
-        },
-        () => {
-          /* ignore scan failures */
-        },
-      );
-    } catch {
+        if (perm) {
+          setScannedPermission(perm);
+          setResult("success");
+          onScanned(perm);
+        } else {
+          setResult("invalid");
+          onScanned(null);
+        }
+        stopCamera();
+      };
+
+      const onScanFailure = () => {};
+
+      try {
+        await scanner.start(
+          { facingMode: "environment" },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          onScanSuccess,
+          onScanFailure,
+        );
+      } catch (err1) {
+        console.warn("Kamera belakang gagal, mencoba kamera depan...", err1);
+        // Fallback to user camera if environment fails (e.g. on laptops)
+        await scanner.start(
+          { facingMode: "user" },
+          { fps: 10, qrbox: { width: 220, height: 220 } },
+          onScanSuccess,
+          onScanFailure,
+        );
+      }
+    } catch (err: any) {
+      console.error("Camera start failed:", err);
       setCameraError(
-        "Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan.",
+        "Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan di browser Anda. " + (err.message || ""),
       );
       setScanning(false);
     }
@@ -209,7 +234,7 @@ export function QRScanner({
         {/* Camera view */}
         <div
           id="qr-reader"
-          className={`absolute inset-0 ${scanning ? "block" : "hidden"}`}
+          className={`absolute inset-0 transition-opacity duration-300 ${scanning ? "opacity-100 z-10" : "opacity-0 -z-10"}`}
         />
 
         <AnimatePresence mode="wait">
