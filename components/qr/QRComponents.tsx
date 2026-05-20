@@ -1,11 +1,11 @@
-'use client';
+"use client";
 
-import { useState, useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle, XCircle, ScanLine, QrCode, Camera } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
-import { Permission, PermissionStatus } from '@/lib/types';
-import { generateQRValue } from '@/lib/utils';
+import { useState, useEffect, useRef } from "react";
+import { motion, AnimatePresence } from "motion/react";
+import { CheckCircle, XCircle, ScanLine, QrCode, Camera } from "lucide-react";
+import { QRCodeSVG } from "qrcode.react";
+import { Permission, PermissionStatus } from "@/lib/types";
+import { generateQRValue } from "@/lib/utils";
 
 // ============================================================
 // QR Generator - generates QR from direct image URL
@@ -18,12 +18,7 @@ export function QRGenerator({ permission }: { permission: Permission }) {
   return (
     <div className="flex flex-col items-center gap-4 p-6 bg-white rounded-2xl border border-slate-200">
       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-        <QRCodeSVG
-          value={qrValue}
-          size={180}
-          level="H"
-          includeMargin
-        />
+        <QRCodeSVG value={qrValue} size={180} level="H" includeMargin />
       </div>
       <div className="text-center">
         <p className="font-bold text-slate-800">{permission.studentName}</p>
@@ -46,10 +41,16 @@ interface QRScannerProps {
   onMarkComplete: (id: string) => void;
 }
 
-export function QRScanner({ permissions, onScanned, onMarkComplete }: QRScannerProps) {
+export function QRScanner({
+  permissions,
+  onScanned,
+  onMarkComplete,
+}: QRScannerProps) {
   const [scanning, setScanning] = useState(false);
-  const [result, setResult] = useState<'idle' | 'success' | 'invalid'>('idle');
-  const [scannedPermission, setScannedPermission] = useState<Permission | null>(null);
+  const [result, setResult] = useState<"idle" | "success" | "invalid">("idle");
+  const [scannedPermission, setScannedPermission] = useState<Permission | null>(
+    null,
+  );
   const [cameraError, setCameraError] = useState<string | null>(null);
   const scannerRef = useRef<HTMLDivElement>(null);
   const html5QrRef = useRef<unknown>(null);
@@ -72,39 +73,46 @@ export function QRScanner({ permissions, onScanned, onMarkComplete }: QRScannerP
 
   const startCamera = async () => {
     setCameraError(null);
-    setResult('idle');
+    setResult("idle");
     setScannedPermission(null);
     setScanning(true);
 
     try {
-      const { Html5Qrcode } = await import('html5-qrcode');
-      const scannerId = 'qr-reader';
+      const { Html5Qrcode } = await import("html5-qrcode");
+      const scannerId = "qr-reader";
       const scanner = new Html5Qrcode(scannerId);
       html5QrRef.current = scanner;
 
       await scanner.start(
-        { facingMode: 'environment' },
+        { facingMode: "environment" },
         { fps: 10, qrbox: { width: 220, height: 220 } },
         (decodedText: string) => {
-          // Try to match permission by ID in scanned URL
-          const idMatch = decodedText.match(/P-\d+/);
-          const permId = idMatch ? idMatch[0] : null;
-          const perm = permId ? permissions.find(p => p.id === permId && p.status === PermissionStatus.APPROVED_PIKET) : null;
+          // Try to match permission by exact backend UUID/id embedded in scanned URL
+          const perm =
+            permissions.find(
+              (p) =>
+                decodedText.includes(p.id) &&
+                p.status === PermissionStatus.APPROVED_PIKET,
+            ) || null;
 
           if (perm) {
             setScannedPermission(perm);
-            setResult('success');
+            setResult("success");
             onScanned(perm);
           } else {
-            setResult('invalid');
+            setResult("invalid");
             onScanned(null);
           }
           stopCamera();
         },
-        () => { /* ignore scan failures */ }
+        () => {
+          /* ignore scan failures */
+        },
       );
     } catch {
-      setCameraError('Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan.');
+      setCameraError(
+        "Tidak dapat mengakses kamera. Pastikan izin kamera telah diberikan.",
+      );
       setScanning(false);
     }
   };
@@ -112,17 +120,19 @@ export function QRScanner({ permissions, onScanned, onMarkComplete }: QRScannerP
   // Simulate scan (fallback when camera is not available)
   const simulateScan = () => {
     setScanning(true);
-    setResult('idle');
+    setResult("idle");
     setScannedPermission(null);
 
     setTimeout(() => {
-      const active = permissions.find(p => p.status === PermissionStatus.APPROVED_PIKET);
+      const active = permissions.find(
+        (p) => p.status === PermissionStatus.APPROVED_PIKET,
+      );
       if (active) {
         setScannedPermission(active);
-        setResult('success');
+        setResult("success");
         onScanned(active);
       } else {
-        setResult('invalid');
+        setResult("invalid");
         onScanned(null);
       }
       setScanning(false);
@@ -130,51 +140,101 @@ export function QRScanner({ permissions, onScanned, onMarkComplete }: QRScannerP
   };
 
   useEffect(() => {
-    return () => { stopCamera(); };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    return () => {
+      stopCamera();
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleMarkComplete = () => {
     if (scannedPermission) {
       onMarkComplete(scannedPermission.id);
-      setResult('idle');
+      setResult("idle");
       setScannedPermission(null);
     }
   };
 
   const resultConfig = {
-    success: { bg: 'bg-emerald-50 border-emerald-300', icon: CheckCircle, iconColor: 'text-emerald-500', text: 'QR Code Valid', textColor: 'text-emerald-700' },
-    invalid: { bg: 'bg-red-50 border-red-300', icon: XCircle, iconColor: 'text-red-500', text: 'QR Code Tidak Valid', textColor: 'text-red-700' },
-    idle: { bg: 'bg-slate-50 border-slate-200', icon: QrCode, iconColor: 'text-slate-300', text: 'Siap Scan', textColor: 'text-slate-400' },
+    success: {
+      bg: "bg-emerald-50 border-emerald-300",
+      icon: CheckCircle,
+      iconColor: "text-emerald-500",
+      text: "QR Code Valid",
+      textColor: "text-emerald-700",
+    },
+    invalid: {
+      bg: "bg-red-50 border-red-300",
+      icon: XCircle,
+      iconColor: "text-red-500",
+      text: "QR Code Tidak Valid",
+      textColor: "text-red-700",
+    },
+    idle: {
+      bg: "bg-slate-50 border-slate-200",
+      icon: QrCode,
+      iconColor: "text-slate-300",
+      text: "Siap Scan",
+      textColor: "text-slate-400",
+    },
   }[result];
 
   return (
     <div className="max-w-sm mx-auto flex flex-col items-center gap-6">
       {/* Scanner Frame */}
-      <div ref={scannerRef} className={`relative w-72 h-72 rounded-3xl border-2 ${resultConfig.bg} flex items-center justify-center overflow-hidden transition-all duration-500`}>
+      <div
+        ref={scannerRef}
+        className={`relative w-72 h-72 rounded-3xl border-2 ${resultConfig.bg} flex items-center justify-center overflow-hidden transition-all duration-500`}
+      >
         {/* Corner decorations */}
-        {['top-2 left-2', 'top-2 right-2', 'bottom-2 left-2', 'bottom-2 right-2'].map((pos, i) => (
-          <div key={i} className={`absolute ${pos} w-7 h-7 border-blue-500 ${
-            i === 0 ? 'border-t-4 border-l-4 rounded-tl-xl' :
-            i === 1 ? 'border-t-4 border-r-4 rounded-tr-xl' :
-            i === 2 ? 'border-b-4 border-l-4 rounded-bl-xl' :
-            'border-b-4 border-r-4 rounded-br-xl'
-          }`} />
+        {[
+          "top-2 left-2",
+          "top-2 right-2",
+          "bottom-2 left-2",
+          "bottom-2 right-2",
+        ].map((pos, i) => (
+          <div
+            key={i}
+            className={`absolute ${pos} w-7 h-7 border-blue-500 ${
+              i === 0
+                ? "border-t-4 border-l-4 rounded-tl-xl"
+                : i === 1
+                  ? "border-t-4 border-r-4 rounded-tr-xl"
+                  : i === 2
+                    ? "border-b-4 border-l-4 rounded-bl-xl"
+                    : "border-b-4 border-r-4 rounded-br-xl"
+            }`}
+          />
         ))}
 
         {/* Camera view */}
-        <div id="qr-reader" className={`absolute inset-0 ${scanning ? 'block' : 'hidden'}`} />
+        <div
+          id="qr-reader"
+          className={`absolute inset-0 ${scanning ? "block" : "hidden"}`}
+        />
 
         <AnimatePresence mode="wait">
           {!scanning && (
-            <motion.div key="result" initial={{ scale: 0.8, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} className="flex flex-col items-center gap-3 p-6 text-center relative z-10">
+            <motion.div
+              key="result"
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="flex flex-col items-center gap-3 p-6 text-center relative z-10"
+            >
               <resultConfig.icon size={56} className={resultConfig.iconColor} />
-              <p className={`font-bold text-sm ${resultConfig.textColor}`}>{resultConfig.text}</p>
+              <p className={`font-bold text-sm ${resultConfig.textColor}`}>
+                {resultConfig.text}
+              </p>
               {scannedPermission && (
                 <div className="bg-white/80 rounded-xl p-3 w-full">
-                  <p className="font-semibold text-slate-800 text-sm">{scannedPermission.studentName}</p>
-                  <p className="text-xs text-slate-500">{scannedPermission.kelas}</p>
-                  <p className="font-mono text-xs text-blue-600">{scannedPermission.id}</p>
+                  <p className="font-semibold text-slate-800 text-sm">
+                    {scannedPermission.studentName}
+                  </p>
+                  <p className="text-xs text-slate-500">
+                    {scannedPermission.kelas}
+                  </p>
+                  <p className="font-mono text-xs text-blue-600">
+                    {scannedPermission.id}
+                  </p>
                 </div>
               )}
             </motion.div>
@@ -194,7 +254,7 @@ export function QRScanner({ permissions, onScanned, onMarkComplete }: QRScannerP
           className="w-full flex items-center justify-center gap-2 px-6 py-4 bg-blue-600 text-white font-bold rounded-2xl hover:bg-blue-700 transition-colors shadow-xl shadow-blue-500/25 disabled:opacity-60 disabled:cursor-not-allowed text-base"
         >
           <Camera size={22} />
-          {scanning ? 'Memindai...' : 'Scan dengan Kamera'}
+          {scanning ? "Memindai..." : "Scan dengan Kamera"}
         </button>
 
         <button
@@ -207,7 +267,7 @@ export function QRScanner({ permissions, onScanned, onMarkComplete }: QRScannerP
         </button>
       </div>
 
-      {result === 'success' && scannedPermission && (
+      {result === "success" && scannedPermission && (
         <button
           onClick={handleMarkComplete}
           className="w-full flex items-center justify-center gap-2 px-6 py-3 bg-emerald-600 text-white font-bold rounded-2xl hover:bg-emerald-700 transition-colors"
@@ -219,9 +279,18 @@ export function QRScanner({ permissions, onScanned, onMarkComplete }: QRScannerP
 
       {/* Legend */}
       <div className="flex items-center gap-6 text-xs text-slate-400">
-        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />Masuk</div>
-        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-amber-500" />Keluar</div>
-        <div className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full bg-red-500" />Tidak Valid</div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
+          Masuk
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-amber-500" />
+          Keluar
+        </div>
+        <div className="flex items-center gap-1.5">
+          <div className="w-2.5 h-2.5 rounded-full bg-red-500" />
+          Tidak Valid
+        </div>
       </div>
     </div>
   );

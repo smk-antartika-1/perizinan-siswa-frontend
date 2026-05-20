@@ -1,29 +1,89 @@
-'use client';
+"use client";
 
-import { useState } from 'react';
-import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useState } from "react";
+import Link from "next/link";
+import { usePathname, useRouter } from "next/navigation";
 import {
-  LayoutDashboard, ClipboardList, History, CheckSquare,
-  Users, ScanLine, LogOut, QrCode, X, UserCircle, Settings
-} from 'lucide-react';
-import { UserRole, ROLE_LABELS } from '@/lib/types';
-import { useAuth } from '@/hooks/useAuth';
-import ConfirmDialog from '@/components/ui/ConfirmDialog';
+  LayoutDashboard,
+  ClipboardList,
+  History,
+  CheckSquare,
+  Users,
+  ScanLine,
+  LogOut,
+  QrCode,
+  X,
+  UserCircle,
+  Settings,
+} from "lucide-react";
+import { UserRole, ROLE_LABELS } from "@/lib/types";
+import { useAuth } from "@/hooks/useAuth";
+import ConfirmDialog from "@/components/ui/ConfirmDialog";
 
 const NAV_ITEMS = [
-  { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard, roles: [UserRole.SISWA, UserRole.WALI_KELAS, UserRole.GURU_PIKET, UserRole.SECURITY, UserRole.ADMIN] },
-  { href: '/izin', label: 'Ajukan Izin', icon: ClipboardList, roles: [UserRole.SISWA] },
-  { href: '/history', label: 'Riwayat', icon: History, roles: [UserRole.SISWA, UserRole.WALI_KELAS, UserRole.GURU_PIKET, UserRole.ADMIN] },
-  { href: '/approval', label: 'Persetujuan', icon: CheckSquare, roles: [UserRole.WALI_KELAS, UserRole.GURU_PIKET, UserRole.ADMIN] },
-  { href: '/students', label: 'Data Siswa', icon: Users, roles: [UserRole.WALI_KELAS, UserRole.GURU_PIKET, UserRole.ADMIN] },
-  { href: '/kelola-qr', label: 'Kelola QR', icon: QrCode, roles: [UserRole.GURU_PIKET, UserRole.ADMIN] },
-  { href: '/scan-qr', label: 'Scan QR', icon: ScanLine, roles: [UserRole.SECURITY, UserRole.ADMIN] },
-  { href: '/admin', label: 'Panel Admin', icon: Settings, roles: [UserRole.ADMIN] },
+  {
+    href: "/dashboard",
+    label: "Dashboard",
+    icon: LayoutDashboard,
+    roles: [
+      UserRole.SISWA,
+      UserRole.WALI_KELAS,
+      UserRole.GURU_PIKET,
+      UserRole.SECURITY,
+      UserRole.ADMIN,
+    ],
+  },
+  {
+    href: "/izin",
+    label: "Ajukan Izin",
+    icon: ClipboardList,
+    roles: [UserRole.SISWA],
+  },
+  {
+    href: "/history",
+    label: "Riwayat",
+    icon: History,
+    roles: [
+      UserRole.SISWA,
+      UserRole.WALI_KELAS,
+      UserRole.GURU_PIKET,
+      UserRole.ADMIN,
+    ],
+  },
+  {
+    href: "/approval",
+    label: "Persetujuan",
+    icon: CheckSquare,
+    roles: [UserRole.WALI_KELAS, UserRole.GURU_PIKET, UserRole.ADMIN],
+  },
+  {
+    href: "/students",
+    label: "Data Siswa",
+    icon: Users,
+    roles: [UserRole.WALI_KELAS, UserRole.GURU_PIKET, UserRole.ADMIN],
+  },
+  {
+    href: "/kelola-qr",
+    label: "Kelola QR",
+    icon: QrCode,
+    roles: [UserRole.GURU_PIKET, UserRole.ADMIN],
+  },
+  {
+    href: "/scan-qr",
+    label: "Scan QR",
+    icon: ScanLine,
+    roles: [UserRole.SECURITY, UserRole.ADMIN],
+  },
+  {
+    href: "/admin",
+    label: "Panel Admin",
+    icon: Settings,
+    roles: [UserRole.ADMIN],
+  },
 ];
 
 const BOTTOM_ITEMS = [
-  { href: '/profile', label: 'Profil Saya', icon: UserCircle },
+  { href: "/profile", label: "Profil Saya", icon: UserCircle },
 ];
 
 interface SidebarProps {
@@ -37,21 +97,23 @@ export default function Sidebar({ onClose, isMobile = false }: SidebarProps) {
   const router = useRouter();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
-  const visibleItems = NAV_ITEMS.filter(item => canAccess(item.roles));
+  const visibleItems = NAV_ITEMS.filter((item) => canAccess(item.roles));
 
   const handleLogout = () => {
     setShowLogoutConfirm(true);
   };
 
-  const confirmLogout = () => {
+  const confirmLogout = async () => {
     setShowLogoutConfirm(false);
-    logout();
-    router.push('/login');
+    await logout();
+    router.push("/login");
   };
 
   return (
     <>
-      <div className={`flex flex-col h-full ${isMobile ? 'w-full' : 'w-72'} bg-white border-r border-slate-200`}>
+      <div
+        className={`flex flex-col h-full ${isMobile ? "w-full" : "w-72"} bg-white border-r border-slate-200`}
+      >
         {/* Logo */}
         <div className="flex items-center justify-between px-6 py-6">
           <div className="flex items-center gap-3">
@@ -59,12 +121,19 @@ export default function Sidebar({ onClose, isMobile = false }: SidebarProps) {
               <QrCode className="text-white" size={20} />
             </div>
             <div>
-              <h1 className="font-bold text-slate-800 leading-tight">E-Izin Siswa</h1>
-              <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">Sistem Perizinan</p>
+              <h1 className="font-bold text-slate-800 leading-tight">
+                E-Izin Siswa
+              </h1>
+              <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">
+                Sistem Perizinan
+              </p>
             </div>
           </div>
           {isMobile && onClose && (
-            <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 text-slate-500">
+            <button
+              onClick={onClose}
+              className="p-2 rounded-xl hover:bg-slate-100 text-slate-500"
+            >
               <X size={20} />
             </button>
           )}
@@ -78,10 +147,12 @@ export default function Sidebar({ onClose, isMobile = false }: SidebarProps) {
                 {currentUser.name.charAt(0)}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-slate-800 truncate">{currentUser.name}</p>
+                <p className="font-semibold text-sm text-slate-800 truncate">
+                  {currentUser.name}
+                </p>
                 <p className="text-xs text-blue-600 font-medium">
                   {ROLE_LABELS[currentUser.role]}
-                  {currentUser.kelas ? ` - ${currentUser.kelas}` : ''}
+                  {currentUser.kelas ? ` - ${currentUser.kelas}` : ""}
                 </p>
               </div>
             </div>
@@ -90,8 +161,10 @@ export default function Sidebar({ onClose, isMobile = false }: SidebarProps) {
 
         {/* Main Nav */}
         <nav className="flex-1 px-4 space-y-1 overflow-y-auto">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">Menu Utama</p>
-          {visibleItems.map(item => {
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">
+            Menu Utama
+          </p>
+          {visibleItems.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
@@ -100,13 +173,22 @@ export default function Sidebar({ onClose, isMobile = false }: SidebarProps) {
                 onClick={onClose}
                 className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm group ${
                   isActive
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                 }`}
               >
-                <item.icon size={18} className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-500 transition-colors'} />
+                <item.icon
+                  size={18}
+                  className={
+                    isActive
+                      ? "text-white"
+                      : "text-slate-400 group-hover:text-blue-500 transition-colors"
+                  }
+                />
                 {item.label}
-                {isActive && <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white/50" />}
+                {isActive && (
+                  <div className="ml-auto w-1.5 h-1.5 rounded-full bg-white/50" />
+                )}
               </Link>
             );
           })}
@@ -114,8 +196,10 @@ export default function Sidebar({ onClose, isMobile = false }: SidebarProps) {
 
         {/* Bottom Nav */}
         <div className="px-4 pb-2 space-y-1">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">Lainnya</p>
-          {BOTTOM_ITEMS.map(item => {
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-3 mb-2">
+            Lainnya
+          </p>
+          {BOTTOM_ITEMS.map((item) => {
             const isActive = pathname === item.href;
             return (
               <Link
@@ -124,11 +208,18 @@ export default function Sidebar({ onClose, isMobile = false }: SidebarProps) {
                 onClick={onClose}
                 className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm group ${
                   isActive
-                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-500/25'
-                    : 'text-slate-500 hover:bg-slate-50 hover:text-slate-800'
+                    ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25"
+                    : "text-slate-500 hover:bg-slate-50 hover:text-slate-800"
                 }`}
               >
-                <item.icon size={18} className={isActive ? 'text-white' : 'text-slate-400 group-hover:text-blue-500 transition-colors'} />
+                <item.icon
+                  size={18}
+                  className={
+                    isActive
+                      ? "text-white"
+                      : "text-slate-400 group-hover:text-blue-500 transition-colors"
+                  }
+                />
                 {item.label}
               </Link>
             );

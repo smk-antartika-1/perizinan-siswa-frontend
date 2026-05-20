@@ -25,6 +25,7 @@ const PAGE_TITLES: Record<string, string> = {
 };
 
 export default function AppShell({ children }: { children: React.ReactNode }) {
+  const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { toasts, removeToast } = useAppContext();
   const { isAuthenticated, currentUser } = useAuth();
@@ -32,11 +33,17 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
 
   useEffect(() => {
-    if (!isAuthenticated && pathname !== '/login') {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (mounted && !isAuthenticated && pathname !== '/login') {
       router.push('/login');
     }
-  }, [isAuthenticated, pathname, router]);
+  }, [isAuthenticated, pathname, router, mounted]);
 
+  // To prevent hydration mismatch, only render after mounting on the client
+  if (!mounted) return null;
   if (!isAuthenticated) return null;
 
   let pageTitle = PAGE_TITLES[pathname] || 'E-Izin Siswa';

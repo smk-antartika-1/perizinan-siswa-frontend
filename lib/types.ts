@@ -2,19 +2,19 @@
 // ENUMS
 // ============================================================
 export enum UserRole {
-  SISWA = 'siswa',
-  WALI_KELAS = 'wali_kelas',
-  GURU_PIKET = 'guru_piket',
-  SECURITY = 'security',
-  ADMIN = 'admin',
+  SISWA = "siswa",
+  WALI_KELAS = "wali_kelas",
+  GURU_PIKET = "guru_piket",
+  SECURITY = "security",
+  ADMIN = "admin",
 }
 
 export enum PermissionStatus {
-  PENDING = 'pending',
-  APPROVED_WALI = 'approved_wali',
-  APPROVED_PIKET = 'approved_piket',
-  REJECTED = 'rejected',
-  COMPLETED = 'completed',
+  PENDING = "pending",
+  APPROVED_WALI = "approved_wali",
+  APPROVED_PIKET = "approved_piket",
+  REJECTED = "rejected",
+  COMPLETED = "completed",
 }
 
 // ============================================================
@@ -26,7 +26,7 @@ export interface User {
   role: UserRole;
   email: string;
   username: string;
-  password: string;
+  password?: string;
   nis?: string;
   kelas?: string;
   nip?: string;
@@ -69,7 +69,7 @@ export interface Permission {
   nomorPolisi?: string;
   qrCode?: string;
   suratUrl?: string;
-  category?: 'sakit' | 'keperluan' | 'dispensasi' | 'lainnya';
+  category?: "sakit" | "keperluan" | "dispensasi" | "lainnya";
   comments?: Comment[];
   auditLog?: AuditLogEntry[];
 }
@@ -89,7 +89,7 @@ export interface Notification {
   message: string;
   timestamp: string;
   read: boolean;
-  type: 'info' | 'warning' | 'success' | 'error';
+  type: "info" | "warning" | "success" | "error";
   permissionId?: string;
 }
 
@@ -105,17 +105,40 @@ export interface NavItem {
 // CONSTANTS
 // ============================================================
 export const ROLE_LABELS: Record<UserRole, string> = {
-  [UserRole.SISWA]: 'Siswa',
-  [UserRole.WALI_KELAS]: 'Wali Kelas',
-  [UserRole.GURU_PIKET]: 'Guru Piket',
-  [UserRole.SECURITY]: 'Security',
-  [UserRole.ADMIN]: 'Administrator',
+  [UserRole.SISWA]: "Siswa",
+  [UserRole.WALI_KELAS]: "Wali Kelas",
+  [UserRole.GURU_PIKET]: "Guru Piket",
+  [UserRole.SECURITY]: "Security",
+  [UserRole.ADMIN]: "Administrator",
 };
 
-export const STATUS_CONFIG: Record<PermissionStatus, { label: string; color: string; bg: string }> = {
-  [PermissionStatus.PENDING]: { label: 'Menunggu', color: 'text-amber-700', bg: 'bg-amber-100' },
-  [PermissionStatus.APPROVED_WALI]: { label: 'Disetujui Wali', color: 'text-blue-700', bg: 'bg-blue-100' },
-  [PermissionStatus.APPROVED_PIKET]: { label: 'Izin Aktif', color: 'text-emerald-700', bg: 'bg-emerald-100' },
-  [PermissionStatus.REJECTED]: { label: 'Ditolak', color: 'text-red-700', bg: 'bg-red-100' },
-  [PermissionStatus.COMPLETED]: { label: 'Selesai', color: 'text-slate-600', bg: 'bg-slate-100' },
+export const STATUS_CONFIG: Record<
+  PermissionStatus,
+  { label: string; color: string; bg: string }
+> = {
+  [PermissionStatus.PENDING]: {
+    label: "Menunggu",
+    color: "text-amber-700",
+    bg: "bg-amber-100",
+  },
+  [PermissionStatus.APPROVED_WALI]: {
+    label: "Disetujui Wali",
+    color: "text-blue-700",
+    bg: "bg-blue-100",
+  },
+  [PermissionStatus.APPROVED_PIKET]: {
+    label: "Izin Aktif",
+    color: "text-emerald-700",
+    bg: "bg-emerald-100",
+  },
+  [PermissionStatus.REJECTED]: {
+    label: "Ditolak",
+    color: "text-red-700",
+    bg: "bg-red-100",
+  },
+  [PermissionStatus.COMPLETED]: {
+    label: "Selesai",
+    color: "text-slate-600",
+    bg: "bg-slate-100",
+  },
 };

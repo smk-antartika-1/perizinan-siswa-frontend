@@ -1,38 +1,36 @@
-'use client';
+"use client";
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { motion } from 'motion/react';
-import { QrCode, ShieldCheck, Lock, User } from 'lucide-react';
-import { useAuth } from '@/hooks/useAuth';
-import { useAppContext } from '@/context/AppContext';
+import { useState, useEffect } from "react";
+import { useRouter } from "next/navigation";
+import { motion } from "motion/react";
+import { QrCode, ShieldCheck, Lock, User } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
+import { useAppContext } from "@/context/AppContext";
 
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth();
   const { showToast } = useAppContext();
   const router = useRouter();
 
-  const [username, setUsername] = useState('');
-  const [password, setPassword] = useState('');
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
-    if (isAuthenticated) router.push('/dashboard');
+    if (isAuthenticated) router.push("/dashboard");
   }, [isAuthenticated, router]);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
 
-    setTimeout(() => {
-      const success = login(username, password);
-      if (success) {
-        router.push('/dashboard');
-      } else {
-        showToast('Username atau password salah.', 'error');
-        setLoading(false);
-      }
-    }, 500);
+    const success = await login(username, password);
+    if (success) {
+      router.push("/dashboard");
+    } else {
+      showToast("Username atau password salah.", "error");
+      setLoading(false);
+    }
   };
 
   return (
@@ -67,33 +65,45 @@ export default function LoginPage() {
         >
           <div className="flex items-center gap-2 mb-6">
             <Lock size={16} className="text-blue-400" />
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Masuk ke Sistem</p>
+            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">
+              Masuk ke Sistem
+            </p>
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Username / NIS</label>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                Username / NIS
+              </label>
               <div className="relative">
-                <User size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                <User
+                  size={16}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"
+                />
                 <input
                   type="text"
                   required
                   value={username}
-                  onChange={e => setUsername(e.target.value)}
+                  onChange={(e) => setUsername(e.target.value)}
                   placeholder="Masukkan username atau NIS"
                   className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all placeholder:text-slate-600"
                 />
               </div>
             </div>
             <div>
-              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">Password</label>
+              <label className="block text-xs font-bold text-slate-400 uppercase tracking-widest mb-1.5">
+                Password
+              </label>
               <div className="relative">
-                <Lock size={16} className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500" />
+                <Lock
+                  size={16}
+                  className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-500"
+                />
                 <input
                   type="password"
                   required
                   value={password}
-                  onChange={e => setPassword(e.target.value)}
+                  onChange={(e) => setPassword(e.target.value)}
                   placeholder="Masukkan password"
                   className="w-full pl-10 pr-4 py-3 bg-slate-900/50 border border-slate-700 rounded-xl text-white text-sm focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 outline-none transition-all placeholder:text-slate-600"
                 />
@@ -111,7 +121,7 @@ export default function LoginPage() {
                   Memproses...
                 </span>
               ) : (
-                'Masuk'
+                "Masuk"
               )}
             </button>
 
@@ -119,11 +129,36 @@ export default function LoginPage() {
             <div className="mt-6 p-4 rounded-xl bg-slate-800/80 border border-slate-700/50 text-xs text-slate-400">
               <p className="font-bold text-slate-300 mb-2">Akun Demo:</p>
               <div className="space-y-1.5">
-                <div className="flex justify-between"><span>Siswa (Budi)</span><span className="font-mono text-blue-400">2024001 / 2024001</span></div>
-                <div className="flex justify-between"><span>Wali Kelas</span><span className="font-mono text-blue-400">walikelas1 / password</span></div>
-                <div className="flex justify-between"><span>Guru Piket</span><span className="font-mono text-blue-400">piket / password</span></div>
-                <div className="flex justify-between"><span>Security</span><span className="font-mono text-blue-400">security / password</span></div>
-                <div className="flex justify-between"><span>Admin</span><span className="font-mono text-blue-400">admin / password</span></div>
+                <div className="flex justify-between">
+                  <span>Siswa (Budi)</span>
+                  <span className="font-mono text-blue-400">
+                    2024001 / 2024001
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Wali Kelas</span>
+                  <span className="font-mono text-blue-400">
+                    NIP001 / password
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Guru Piket</span>
+                  <span className="font-mono text-blue-400">
+                    NIP002 / password
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Security</span>
+                  <span className="font-mono text-blue-400">
+                    SEC001 / password
+                  </span>
+                </div>
+                <div className="flex justify-between">
+                  <span>Admin</span>
+                  <span className="font-mono text-blue-400">
+                    ADM001 / password
+                  </span>
+                </div>
               </div>
             </div>
           </form>
@@ -136,9 +171,15 @@ export default function LoginPage() {
           transition={{ delay: 0.6 }}
           className="flex items-center justify-center gap-4 mt-6 text-xs text-slate-600"
         >
-          <div className="flex items-center gap-1.5"><ShieldCheck size={12} />Aman dan Terenkripsi</div>
+          <div className="flex items-center gap-1.5">
+            <ShieldCheck size={12} />
+            Aman dan Terenkripsi
+          </div>
           <span>|</span>
-          <div className="flex items-center gap-1.5"><QrCode size={12} />Validasi QR Code</div>
+          <div className="flex items-center gap-1.5">
+            <QrCode size={12} />
+            Validasi QR Code
+          </div>
         </motion.div>
       </div>
     </div>

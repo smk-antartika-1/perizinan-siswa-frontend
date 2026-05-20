@@ -1,59 +1,63 @@
-'use client';
+"use client";
 
-import { useState, useRef } from 'react';
-import { UserCircle, Camera, Lock, Eye, EyeOff } from 'lucide-react';
-import AppShell from '@/components/layout/AppShell';
-import { useAuth } from '@/hooks/useAuth';
-import { useAppContext } from '@/context/AppContext';
-import { ROLE_LABELS } from '@/lib/types';
+import { useState, useRef } from "react";
+import { UserCircle, Camera, Lock, Eye, EyeOff } from "lucide-react";
+import AppShell from "@/components/layout/AppShell";
+import { useAuth } from "@/hooks/useAuth";
+import { useAppContext } from "@/context/AppContext";
+import { ROLE_LABELS } from "@/lib/types";
 
 export default function ProfilePage() {
   const { currentUser } = useAuth();
-  const { showToast } = useAppContext();
+  const { showToast, changePassword, updateProfile } = useAppContext();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
-  const [oldPassword, setOldPassword] = useState('');
-  const [newPassword, setNewPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
+  const [oldPassword, setOldPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showOld, setShowOld] = useState(false);
   const [showNew, setShowNew] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
 
   if (!currentUser) return null;
 
-  const handleAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
       const reader = new FileReader();
-      reader.onload = (ev) => {
-        setAvatarPreview(ev.target?.result as string);
-        showToast('Foto profil berhasil diperbarui', 'success');
-      };
+      reader.onload = (ev) => setAvatarPreview(ev.target?.result as string);
       reader.readAsDataURL(file);
+      try {
+        await updateProfile({ avatar: file });
+        showToast("Foto profil berhasil diperbarui", "success");
+      } catch {
+        showToast("Gagal memperbarui foto profil", "error");
+      }
     }
   };
 
-  const handlePasswordChange = (e: React.FormEvent) => {
+  const handlePasswordChange = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    if (oldPassword !== currentUser.password) {
-      showToast('Password lama tidak sesuai', 'error');
-      return;
-    }
     if (newPassword.length < 6) {
-      showToast('Password baru minimal 6 karakter', 'error');
+      showToast("Password baru minimal 6 karakter", "error");
       return;
     }
     if (newPassword !== confirmPassword) {
-      showToast('Konfirmasi password tidak cocok', 'error');
+      showToast("Konfirmasi password tidak cocok", "error");
       return;
     }
 
-    showToast('Password berhasil diperbarui', 'success');
-    setOldPassword('');
-    setNewPassword('');
-    setConfirmPassword('');
+    try {
+      await changePassword(oldPassword, newPassword, confirmPassword);
+      showToast("Password berhasil diperbarui", "success");
+      setOldPassword("");
+      setNewPassword("");
+      setConfirmPassword("");
+    } catch {
+      showToast("Password lama tidak sesuai atau gagal diperbarui", "error");
+    }
   };
 
   return (
@@ -71,7 +75,11 @@ export default function ProfilePage() {
             <div className="relative group mb-4">
               <div className="w-28 h-28 rounded-full bg-slate-100 border-4 border-white shadow-lg flex items-center justify-center overflow-hidden">
                 {avatarPreview ? (
-                  <img src={avatarPreview} alt="Avatar" className="w-full h-full object-cover" />
+                  <img
+                    src={avatarPreview}
+                    alt="Avatar"
+                    className="w-full h-full object-cover"
+                  />
                 ) : (
                   <UserCircle className="text-slate-300 w-20 h-20" />
                 )}
@@ -90,41 +98,69 @@ export default function ProfilePage() {
                 className="hidden"
               />
             </div>
-            <h2 className="text-2xl font-bold text-slate-800">{currentUser.name}</h2>
-            <p className="text-sm text-blue-600 font-semibold mt-1">{ROLE_LABELS[currentUser.role]}</p>
+            <h2 className="text-2xl font-bold text-slate-800">
+              {currentUser.name}
+            </h2>
+            <p className="text-sm text-blue-600 font-semibold mt-1">
+              {ROLE_LABELS[currentUser.role]}
+            </p>
           </div>
 
           {/* Info Fields (Readonly) */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Nama Lengkap</p>
-              <p className="text-sm font-semibold text-slate-700">{currentUser.name}</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">
+                Nama Lengkap
+              </p>
+              <p className="text-sm font-semibold text-slate-700">
+                {currentUser.name}
+              </p>
             </div>
             {currentUser.nis && (
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">NIS</p>
-                <p className="text-sm font-semibold text-slate-700 font-mono">{currentUser.nis}</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">
+                  NIS
+                </p>
+                <p className="text-sm font-semibold text-slate-700 font-mono">
+                  {currentUser.nis}
+                </p>
               </div>
             )}
             {currentUser.nip && (
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">NIP</p>
-                <p className="text-sm font-semibold text-slate-700 font-mono">{currentUser.nip}</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">
+                  NIP
+                </p>
+                <p className="text-sm font-semibold text-slate-700 font-mono">
+                  {currentUser.nip}
+                </p>
               </div>
             )}
             {currentUser.kelas && (
               <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Kelas</p>
-                <p className="text-sm font-semibold text-slate-700">{currentUser.kelas}</p>
+                <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">
+                  Kelas
+                </p>
+                <p className="text-sm font-semibold text-slate-700">
+                  {currentUser.kelas}
+                </p>
               </div>
             )}
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Email</p>
-              <p className="text-sm font-semibold text-slate-700">{currentUser.email}</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">
+                Email
+              </p>
+              <p className="text-sm font-semibold text-slate-700">
+                {currentUser.email}
+              </p>
             </div>
             <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100">
-              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">Username</p>
-              <p className="text-sm font-semibold text-slate-700 font-mono">{currentUser.username}</p>
+              <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest mb-1">
+                Username
+              </p>
+              <p className="text-sm font-semibold text-slate-700 font-mono">
+                {currentUser.username}
+              </p>
             </div>
           </div>
         </div>
@@ -137,7 +173,9 @@ export default function ProfilePage() {
             </div>
             <div>
               <h3 className="font-bold text-slate-800">Ubah Password</h3>
-              <p className="text-xs text-slate-400">Perbarui password akun Anda secara berkala</p>
+              <p className="text-xs text-slate-400">
+                Perbarui password akun Anda secara berkala
+              </p>
             </div>
           </div>
 
@@ -146,14 +184,18 @@ export default function ProfilePage() {
               <label className="label">Password Lama</label>
               <div className="relative">
                 <input
-                  type={showOld ? 'text' : 'password'}
+                  type={showOld ? "text" : "password"}
                   required
                   value={oldPassword}
-                  onChange={e => setOldPassword(e.target.value)}
+                  onChange={(e) => setOldPassword(e.target.value)}
                   placeholder="Masukkan password lama"
                   className="input pr-10"
                 />
-                <button type="button" onClick={() => setShowOld(!showOld)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <button
+                  type="button"
+                  onClick={() => setShowOld(!showOld)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
                   {showOld ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
@@ -162,14 +204,18 @@ export default function ProfilePage() {
               <label className="label">Password Baru</label>
               <div className="relative">
                 <input
-                  type={showNew ? 'text' : 'password'}
+                  type={showNew ? "text" : "password"}
                   required
                   value={newPassword}
-                  onChange={e => setNewPassword(e.target.value)}
+                  onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Minimal 6 karakter"
                   className="input pr-10"
                 />
-                <button type="button" onClick={() => setShowNew(!showNew)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <button
+                  type="button"
+                  onClick={() => setShowNew(!showNew)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
                   {showNew ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
@@ -178,14 +224,18 @@ export default function ProfilePage() {
               <label className="label">Konfirmasi Password Baru</label>
               <div className="relative">
                 <input
-                  type={showConfirm ? 'text' : 'password'}
+                  type={showConfirm ? "text" : "password"}
                   required
                   value={confirmPassword}
-                  onChange={e => setConfirmPassword(e.target.value)}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Ulangi password baru"
                   className="input pr-10"
                 />
-                <button type="button" onClick={() => setShowConfirm(!showConfirm)} className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600">
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
+                >
                   {showConfirm ? <EyeOff size={16} /> : <Eye size={16} />}
                 </button>
               </div>
