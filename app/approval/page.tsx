@@ -24,18 +24,18 @@ export default function ApprovalPage() {
     );
   }
 
-  const handleApprove = (id: string) => {
+  const handleApprove = (id: string, comment?: string) => {
     if (currentUser?.role === UserRole.WALI_KELAS) {
-      approveAsWali(id);
+      approveAsWali(id, comment);
       showToast('Izin berhasil disetujui dan diteruskan ke Guru Piket', 'success');
     } else if (currentUser?.role === UserRole.GURU_PIKET || currentUser?.role === UserRole.ADMIN) {
-      approveAsPiket(id);
+      approveAsPiket(id, comment);
       showToast('Izin disetujui! QR Code sudah aktif untuk siswa', 'success');
     }
   };
 
-  const handleReject = (id: string) => {
-    reject(id);
+  const handleReject = (id: string, reason?: string) => {
+    reject(id, reason);
     showToast('Pengajuan izin telah ditolak', 'error');
   };
 

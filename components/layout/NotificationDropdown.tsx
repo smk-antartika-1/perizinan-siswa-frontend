@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Bell, CheckCheck, Info, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
 import { formatRelativeTime } from '@/lib/utils';
@@ -24,6 +25,7 @@ const TYPE_COLORS: Record<Notification['type'], string> = {
 export default function NotificationDropdown() {
   const [open, setOpen] = useState(false);
   const ref = useRef<HTMLDivElement>(null);
+  const router = useRouter();
   const { notifications, markNotificationRead, markAllNotificationsRead, unreadCount } = useAppContext();
 
   useEffect(() => {
@@ -75,7 +77,13 @@ export default function NotificationDropdown() {
                 return (
                   <button
                     key={n.id}
-                    onClick={() => { markNotificationRead(n.id); }}
+                    onClick={() => {
+                      markNotificationRead(n.id);
+                      setOpen(false);
+                      if (n.permissionId) {
+                        router.push(`/izin/${n.permissionId}`);
+                      }
+                    }}
                     className={`w-full flex items-start gap-3 p-4 text-left hover:bg-slate-50 transition-colors ${
                       !n.read ? 'bg-blue-50/30' : ''
                     }`}

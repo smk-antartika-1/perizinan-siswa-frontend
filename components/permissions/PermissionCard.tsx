@@ -1,19 +1,23 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, QrCode } from 'lucide-react';
+import { 
+  CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, 
+  QrCode, Eye, Send, AlertCircle, Calendar, ArrowRight 
+} from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Permission, PermissionStatus, UserRole } from '@/lib/types';
-import { formatDateTime, formatTime } from '@/lib/utils';
+import { formatDateTime, formatTime, generateQRValue } from '@/lib/utils';
+import { useAppContext } from '@/context/AppContext';
 import Modal from '@/components/ui/Modal';
 import { QRCodeSVG } from 'qrcode.react';
-import { generateQRValue } from '@/lib/utils';
 
 interface PermissionCardProps {
   permission: Permission;
-  onApprove?: (id: string) => void;
-  onReject?: (id: string) => void;
+  onApprove?: (id: string, comment?: string) => void;
+  onReject?: (id: string, reason?: string) => void;
   userRole?: UserRole;
   showActions?: boolean;
 }
@@ -25,10 +29,17 @@ export default function PermissionCard({
   userRole,
   showActions = false,
 }: PermissionCardProps) {
+  const router = useRouter();
+  const { viewStudent, users } = useAppContext();
+  
   const [expanded, setExpanded] = useState(false);
   const [qrOpen, setQrOpen] = useState(false);
-  const [rejectReason, setRejectReason] = useState('');
+  const [commentText, setCommentText] = useState('');
   const [rejectOpen, setRejectOpen] = useState(false);
+
+  // Find Student NIS for global details modal
+  const studentUser = users.find(u => u.name === p.studentName || u.id === p.studentId);
+  const studentNis = studentUser?.nis || 'NIS-MOCK';
 
   const canApprove =
     showActions &&
@@ -36,161 +47,304 @@ export default function PermissionCard({
       (userRole === UserRole.GURU_PIKET && p.status === PermissionStatus.APPROVED_WALI) ||
       (userRole === UserRole.ADMIN && (p.status === PermissionStatus.PENDING || p.status === PermissionStatus.APPROVED_WALI)));
 
+  // Stepper Mini config
+  const isWaliDone = p.status !== PermissionStatus.PENDING && p.status !== PermissionStatus.REJECTED;
+  const isPiketDone = p.status === PermissionStatus.APPROVED_PIKET || p.status === PermissionStatus.COMPLETED;
+  const isReturnDone = p.status === PermissionStatus.COMPLETED || p.category === 'sakit';
+
   return (
     <>
       <motion.div
         layout
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:border-blue-200 hover:shadow-md transition-all"
+        className="bg-white rounded-2xl border border-slate-200 overflow-hidden hover:border-blue-200 hover:shadow-md transition-all flex flex-col justify-between"
       >
-        {/* Card Header */}
-        <div className="p-4 flex items-center justify-between gap-3">
-          {/* Avatar + Info */}
-          <div className="flex items-center gap-3 flex-1 min-w-0">
-            <div className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center font-bold text-blue-600 text-lg flex-shrink-0">
-              {p.studentName.charAt(0)}
-            </div>
-            <div className="flex-1 min-w-0">
-              <p className="font-semibold text-slate-800 text-sm truncate">{p.studentName}</p>
-              <p className="text-xs text-slate-400">{p.kelas} · {formatDateTime(p.createdAt)}</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 flex-shrink-0">
-            <StatusBadge status={p.status} />
-            {p.status === PermissionStatus.APPROVED_PIKET && (
-              <button
-                onClick={() => setQrOpen(true)}
-                className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                title="Lihat QR"
+        <div>
+          {/* Card Header */}
+          <div className="p-4 flex items-center justify-between gap-3">
+            {/* Avatar & Clickable Name */}
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div 
+                onClick={() => viewStudent(studentNis)}
+                className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center font-bold text-blue-600 text-lg flex-shrink-0 cursor-pointer hover:bg-blue-200 transition-colors"
+                title="Buka Profil Siswa"
               >
-                <QrCode size={16} />
-              </button>
-            )}
-            <button
-              onClick={() => setExpanded(!expanded)}
-              className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"
-            >
-              {expanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-            </button>
-          </div>
-        </div>
-
-        {/* Reason preview */}
-        <div className="px-4 pb-3">
-          <p className="text-sm text-slate-600 line-clamp-2 italic">"{p.reason}"</p>
-        </div>
-
-        {/* Expanded Detail */}
-        <AnimatePresence>
-          {expanded && (
-            <motion.div
-              initial={{ height: 0, opacity: 0 }}
-              animate={{ height: 'auto', opacity: 1 }}
-              exit={{ height: 0, opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              className="overflow-hidden"
-            >
-              <div className="px-4 pb-4 pt-2 border-t border-slate-100 space-y-3">
-                <div className="grid grid-cols-2 gap-3">
-                  <div className="bg-slate-50 rounded-xl p-3">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Jam Berangkat</p>
-                    <div className="flex items-center gap-1.5">
-                      <Clock size={13} className="text-slate-400" />
-                      <span className="text-sm font-semibold text-slate-700">{formatTime(p.departureTime)}</span>
-                    </div>
-                  </div>
-                  <div className="bg-slate-50 rounded-xl p-3">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">Est. Kembali</p>
-                    <div className="flex items-center gap-1.5">
-                      <Clock size={13} className="text-slate-400" />
-                      <span className="text-sm font-semibold text-slate-700">{formatTime(p.estimatedReturnTime)}</span>
-                    </div>
-                  </div>
-                </div>
-
-                {p.nomorPolisi && (
-                  <div className="bg-slate-50 rounded-xl p-3">
-                    <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">No. Polisi Kendaraan</p>
-                    <p className="text-sm font-semibold text-slate-700 font-mono">{p.nomorPolisi}</p>
-                  </div>
-                )}
-
-                {p.approvedByWaliName && (
-                  <div className="bg-blue-50 rounded-xl p-3 flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-blue-500" />
-                    <p className="text-xs text-blue-700">Disetujui Wali: <strong>{p.approvedByWaliName}</strong></p>
-                  </div>
-                )}
-                {p.approvedByPiketName && (
-                  <div className="bg-emerald-50 rounded-xl p-3 flex items-center gap-2">
-                    <CheckCircle2 size={14} className="text-emerald-500" />
-                    <p className="text-xs text-emerald-700">Disetujui Piket: <strong>{p.approvedByPiketName}</strong></p>
-                  </div>
-                )}
-                {p.rejectedReason && (
-                  <div className="bg-red-50 rounded-xl p-3 flex items-center gap-2">
-                    <XCircle size={14} className="text-red-500" />
-                    <p className="text-xs text-red-700">Alasan penolakan: <strong>{p.rejectedReason}</strong></p>
-                  </div>
-                )}
+                {p.studentName.charAt(0)}
               </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
+              <div className="flex-1 min-w-0">
+                <button
+                  onClick={() => viewStudent(studentNis)}
+                  className="font-bold text-slate-800 text-sm hover:text-blue-600 hover:underline cursor-pointer text-left block truncate"
+                  title="Buka Profil Siswa"
+                >
+                  {p.studentName}
+                </button>
+                <p className="text-xs text-slate-400 font-medium">{p.kelas} · {formatDateTime(p.createdAt)}</p>
+              </div>
+            </div>
 
-        {/* Action Buttons */}
-        {canApprove && (
-          <div className="px-4 pb-4 grid grid-cols-2 gap-3">
-            <button
-              onClick={() => setRejectOpen(true)}
-              className="flex items-center justify-center gap-2 py-2.5 rounded-xl border border-red-200 text-red-600 text-xs font-bold hover:bg-red-600 hover:text-white transition-all"
-            >
-              <XCircle size={15} /> Tolak
-            </button>
-            <button
-              onClick={() => onApprove?.(p.id)}
-              className="flex items-center justify-center gap-2 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all shadow-lg shadow-blue-500/20"
-            >
-              <CheckCircle2 size={15} /> Setujui
-            </button>
+            <div className="flex items-center gap-1.5 flex-shrink-0">
+              <StatusBadge status={p.status} />
+              {p.status === PermissionStatus.APPROVED_PIKET && (
+                <button
+                  onClick={() => setQrOpen(true)}
+                  className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
+                  title="Lihat QR Code"
+                >
+                  <QrCode size={15} />
+                </button>
+              )}
+              <button
+                onClick={() => setExpanded(!expanded)}
+                className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"
+              >
+                {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
+              </button>
+            </div>
           </div>
-        )}
+
+          {/* Mini Stepper Timeline Progress Bar */}
+          <div className="px-4 pb-3.5">
+            <div className="flex items-center justify-between gap-2 bg-slate-50 p-2.5 rounded-xl border border-slate-150 text-[10px] font-semibold">
+              {/* Diajukan */}
+              <div className="flex items-center gap-1">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-sm" />
+                <span className="text-slate-700">Diajukan</span>
+              </div>
+              
+              <div className="flex-1 h-[2px] bg-slate-200">
+                <div className={`h-full ${isWaliDone ? 'bg-emerald-500' : 'bg-slate-250'}`} />
+              </div>
+
+              {/* Wali Kelas */}
+              <div 
+                className="flex items-center gap-1 cursor-help"
+                title={p.approvedByWaliName ? `Disetujui oleh Wali Kelas: ${p.approvedByWaliName}` : 'Menunggu persetujuan Wali Kelas'}
+              >
+                <div className={`w-2.5 h-2.5 rounded-full ${
+                  p.status === PermissionStatus.REJECTED && !p.approvedByWaliId ? 'bg-red-500' :
+                  isWaliDone ? 'bg-emerald-500' : 'bg-slate-300'
+                }`} />
+                <span className={isWaliDone ? 'text-slate-700 font-bold' : 'text-slate-400'}>
+                  {p.approvedByWaliName ? `Wali (${p.approvedByWaliName.split(' ')[0]})` : 'Wali'}
+                </span>
+              </div>
+
+              <div className="flex-1 h-[2px] bg-slate-200">
+                <div className={`h-full ${isPiketDone ? 'bg-emerald-500' : 'bg-slate-250'}`} />
+              </div>
+
+              {/* Guru Piket */}
+              <div 
+                className="flex items-center gap-1 cursor-help"
+                title={p.approvedByPiketName ? `Disetujui oleh Guru Piket: ${p.approvedByPiketName}` : 'Menunggu persetujuan Guru Piket'}
+              >
+                <div className={`w-2.5 h-2.5 rounded-full ${
+                  p.status === PermissionStatus.REJECTED && p.approvedByWaliId ? 'bg-red-500' :
+                  isPiketDone ? 'bg-emerald-500' : 'bg-slate-300'
+                }`} />
+                <span className={isPiketDone ? 'text-slate-700 font-bold' : 'text-slate-400'}>
+                  {p.approvedByPiketName ? `Piket (${p.approvedByPiketName.split(' ')[0]})` : 'Piket'}
+                </span>
+              </div>
+
+              <div className="flex-1 h-[2px] bg-slate-200">
+                <div className={`h-full ${isReturnDone ? 'bg-emerald-500' : 'bg-slate-250'}`} />
+              </div>
+
+              {/* Kembali */}
+              <div className="flex items-center gap-1">
+                <div className={`w-2.5 h-2.5 rounded-full ${
+                  isReturnDone ? 'bg-emerald-500' : 'bg-slate-300'
+                }`} />
+                <span className={isReturnDone ? 'text-slate-700' : 'text-slate-400'}>
+                  {p.category === 'sakit' ? 'Sakit' : 'Kembali'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          {/* Reason preview */}
+          <div className="px-4 pb-4">
+            <div className="p-3 bg-slate-50 border border-slate-100 rounded-xl">
+              <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest text-[9px] mb-1">
+                Kategori: <span className="text-blue-600">{p.category || 'lainnya'}</span>
+              </p>
+              <p className="text-xs text-slate-600 line-clamp-2 italic">"{p.reason}"</p>
+            </div>
+          </div>
+
+          {/* Expanded Detail */}
+          <AnimatePresence>
+            {expanded && (
+              <motion.div
+                initial={{ height: 0, opacity: 0 }}
+                animate={{ height: 'auto', opacity: 1 }}
+                exit={{ height: 0, opacity: 0 }}
+                transition={{ duration: 0.2 }}
+                className="overflow-hidden"
+              >
+                <div className="px-4 pb-4 space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Jam Berangkat</p>
+                      <div className="flex items-center gap-1">
+                        <Clock size={12} className="text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-700">{formatTime(p.departureTime)}</span>
+                      </div>
+                    </div>
+                    <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">Est. Kembali</p>
+                      <div className="flex items-center gap-1">
+                        <Clock size={12} className="text-slate-400" />
+                        <span className="text-xs font-semibold text-slate-700">
+                          {p.category === 'sakit' ? 'Bebas (Sakit)' : formatTime(p.estimatedReturnTime)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {p.nomorPolisi && (
+                    <div className="bg-slate-50 rounded-xl p-2.5 border border-slate-100">
+                      <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-0.5">No. Polisi Kendaraan</p>
+                      <p className="text-xs font-mono font-bold text-slate-700">{p.nomorPolisi}</p>
+                    </div>
+                  )}
+
+                  {p.approvedByWaliName && (
+                    <div className="bg-blue-50/50 border border-blue-100 rounded-xl p-2.5 flex items-center gap-2">
+                      <CheckCircle2 size={13} className="text-blue-500 flex-shrink-0" />
+                      <p className="text-[10px] text-blue-700">Disetujui Wali Kelas: <strong>{p.approvedByWaliName}</strong></p>
+                    </div>
+                  )}
+                  {p.approvedByPiketName && (
+                    <div className="bg-emerald-50/50 border border-emerald-100 rounded-xl p-2.5 flex items-center gap-2">
+                      <CheckCircle2 size={13} className="text-emerald-500 flex-shrink-0" />
+                      <p className="text-[10px] text-emerald-700">Disetujui Guru Piket: <strong>{p.approvedByPiketName}</strong></p>
+                    </div>
+                  )}
+                  {p.rejectedReason && (
+                    <div className="bg-red-50/50 border border-red-100 rounded-xl p-2.5 flex items-center gap-2">
+                      <XCircle size={13} className="text-red-500 flex-shrink-0" />
+                      <p className="text-[10px] text-red-700">Alasan Penolakan: <strong className="italic">"{p.rejectedReason}"</strong></p>
+                    </div>
+                  )}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+        </div>
+
+        {/* Action Panel */}
+        <div className="border-t border-slate-100 p-4 bg-slate-50/40 space-y-3">
+          
+          {/* Notes input prior to action */}
+          {canApprove && (
+            <div className="space-y-1">
+              <label className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block">Catatan Keputusan (Opsional)</label>
+              <textarea
+                placeholder="Tulis alasan keputusan Anda disini..."
+                value={commentText}
+                onChange={e => setCommentText(e.target.value)}
+                rows={1}
+                className="w-full text-xs input py-1.5 px-3 bg-white resize-none"
+              />
+            </div>
+          )}
+
+          <div className="flex gap-2 w-full">
+            {/* View Details Redirect button (Universal CTA) */}
+            <button
+              onClick={() => router.push(`/izin/${p.id}`)}
+              className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-xs text-slate-600 transition-all shadow-sm select-none"
+            >
+              <Eye size={13} />
+              Detail
+            </button>
+
+            {canApprove && (
+              <>
+                <button
+                  onClick={() => {
+                    if (!commentText.trim()) {
+                      setRejectOpen(true);
+                    } else {
+                      onReject?.(p.id, commentText);
+                      setCommentText('');
+                    }
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl border border-red-200 text-red-600 text-xs font-bold hover:bg-red-50 transition-all select-none"
+                >
+                  <XCircle size={13} />
+                  Tolak
+                </button>
+                <button
+                  onClick={() => {
+                    onApprove?.(p.id, commentText);
+                    setCommentText('');
+                  }}
+                  className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-500/10 select-none"
+                >
+                  <CheckCircle2 size={13} />
+                  Setujui
+                </button>
+              </>
+            )}
+          </div>
+        </div>
       </motion.div>
 
-      {/* QR Modal */}
-      <Modal isOpen={qrOpen} onClose={() => setQrOpen(false)} title="QR Code Perizinan" size="sm">
-        <div className="flex flex-col items-center gap-4">
-          <div className="bg-slate-50 p-5 rounded-2xl border border-slate-100">
-            <QRCodeSVG value={generateQRValue(p)} size={200} />
+      {/* QR Code Modal preview */}
+      <Modal isOpen={qrOpen} onClose={() => setQrOpen(false)} title="QR Code Tiket Siswa" size="sm">
+        <div className="flex flex-col items-center gap-4 py-2">
+          <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100 shadow-sm">
+            <QRCodeSVG value={generateQRValue(p)} size={180} level="H" />
           </div>
           <div className="text-center">
-            <p className="font-bold text-slate-800">{p.studentName}</p>
-            <p className="text-sm text-slate-500">{p.kelas} · {p.id}</p>
+            <h4 className="font-bold text-slate-800 text-base">{p.studentName}</h4>
+            <p className="text-xs text-slate-400 font-semibold mt-0.5">{p.kelas} · ID: {p.id}</p>
           </div>
-          <p className="text-xs text-slate-400 text-center">Tunjukkan QR ini ke petugas security saat keluar/masuk sekolah</p>
+          <p className="text-xs text-slate-450 text-center leading-relaxed">
+            Tiket QR perizinan aktif. Berikan struk QR fisik hasil cetak Guru Piket ke siswa atau gunakan lembar digital ini di pintu gerbang.
+          </p>
         </div>
       </Modal>
 
       {/* Reject Modal */}
-      <Modal isOpen={rejectOpen} onClose={() => setRejectOpen(false)} title="Tolak Pengajuan" size="sm">
+      <Modal isOpen={rejectOpen} onClose={() => setRejectOpen(false)} title="Konfirmasi Alasan Penolakan" size="sm">
         <div className="space-y-4">
-          <p className="text-sm text-slate-600">Masukkan alasan penolakan untuk <strong>{p.studentName}</strong>:</p>
+          <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex gap-2 text-xs text-red-700">
+            <AlertCircle size={16} className="flex-shrink-0" />
+            <p>Anda wajib memberikan alasan penolakan agar siswa memahami kendala pengajuan perizinan mereka.</p>
+          </div>
+          
           <textarea
             rows={3}
-            value={rejectReason}
-            onChange={e => setRejectReason(e.target.value)}
-            placeholder="Contoh: Alasan tidak memenuhi syarat..."
-            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-red-400 focus:ring-4 focus:ring-red-400/10 outline-none resize-none text-sm"
+            value={commentText}
+            onChange={e => setCommentText(e.target.value)}
+            placeholder="Tulis alasan penolakan, contoh: Dokumen/Surat Izin Orang Tua belum dilampirkan atau Alasan tidak mendesak..."
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-red-400 focus:ring-4 focus:ring-red-400/10 outline-none resize-none text-xs"
           />
+          
           <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => setRejectOpen(false)} className="py-2.5 rounded-xl border border-slate-200 text-slate-600 text-sm font-medium hover:bg-slate-50">Batal</button>
-            <button
-              onClick={() => { onReject?.(p.id); setRejectOpen(false); }}
-              className="py-2.5 rounded-xl bg-red-600 text-white text-sm font-bold hover:bg-red-700 transition-colors"
+            <button 
+              onClick={() => setRejectOpen(false)} 
+              className="py-2.5 rounded-xl border border-slate-200 text-slate-650 text-xs font-semibold hover:bg-slate-50 transition-colors"
             >
-              Tolak Sekarang
+              Batal
+            </button>
+            <button
+              onClick={() => {
+                if (!commentText.trim()) return;
+                onReject?.(p.id, commentText);
+                setRejectOpen(false);
+                setCommentText('');
+              }}
+              disabled={!commentText.trim()}
+              className="py-2.5 rounded-xl bg-red-600 disabled:opacity-50 text-white text-xs font-bold hover:bg-red-700 transition-colors shadow-md shadow-red-500/15"
+            >
+              Kirim & Tolak Izin
             </button>
           </div>
         </div>

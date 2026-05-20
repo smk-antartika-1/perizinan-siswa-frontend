@@ -1,6 +1,7 @@
 'use client';
 
 import { Bell, CheckCheck, Info, AlertTriangle, CheckCircle, XCircle } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 import AppShell from '@/components/layout/AppShell';
 import { useAppContext } from '@/context/AppContext';
 import { formatRelativeTime } from '@/lib/utils';
@@ -21,6 +22,7 @@ const TYPE_COLORS: Record<Notification['type'], string> = {
 };
 
 export default function NotificationsPage() {
+  const router = useRouter();
   const { notifications, markNotificationRead, markAllNotificationsRead, unreadCount } = useAppContext();
 
   return (
@@ -52,7 +54,12 @@ export default function NotificationsPage() {
             return (
               <button
                 key={n.id}
-                onClick={() => markNotificationRead(n.id)}
+                onClick={() => {
+                  markNotificationRead(n.id);
+                  if (n.permissionId) {
+                    router.push(`/izin/${n.permissionId}`);
+                  }
+                }}
                 className={`w-full card p-4 flex items-start gap-4 text-left hover:shadow-md transition-all ${
                   !n.read ? 'border-blue-200 bg-blue-50/30' : ''
                 }`}

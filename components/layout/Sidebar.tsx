@@ -17,6 +17,7 @@ const NAV_ITEMS = [
   { href: '/history', label: 'Riwayat', icon: History, roles: [UserRole.SISWA, UserRole.WALI_KELAS, UserRole.GURU_PIKET, UserRole.ADMIN] },
   { href: '/approval', label: 'Persetujuan', icon: CheckSquare, roles: [UserRole.WALI_KELAS, UserRole.GURU_PIKET, UserRole.ADMIN] },
   { href: '/students', label: 'Data Siswa', icon: Users, roles: [UserRole.WALI_KELAS, UserRole.GURU_PIKET, UserRole.ADMIN] },
+  { href: '/kelola-qr', label: 'Kelola QR', icon: QrCode, roles: [UserRole.GURU_PIKET, UserRole.ADMIN] },
   { href: '/scan-qr', label: 'Scan QR', icon: ScanLine, roles: [UserRole.SECURITY, UserRole.ADMIN] },
   { href: '/admin', label: 'Panel Admin', icon: Settings, roles: [UserRole.ADMIN] },
 ];

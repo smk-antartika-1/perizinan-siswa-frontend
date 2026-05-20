@@ -1,9 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { motion } from 'motion/react';
 import {
   ClipboardList, Clock, CheckCircle2, XCircle, TrendingUp,
-  AlertCircle, QrCode, Plus, ArrowRight
+  AlertCircle, QrCode, Plus, ArrowRight, Eye
 } from 'lucide-react';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
@@ -13,10 +14,24 @@ import { usePermissions } from '@/hooks/usePermissions';
 import { ROLE_LABELS, UserRole, PermissionStatus } from '@/lib/types';
 import { getPermissionStats, formatDateTime } from '@/lib/utils';
 import { QRGenerator } from '@/components/qr/QRComponents';
+import PermissionCard from '@/components/permissions/PermissionCard';
+import { useAppContext } from '@/context/AppContext';
+import Modal from '@/components/ui/Modal';
 
 export default function DashboardPage() {
   const { currentUser } = useAuth();
-  const { myPermissions, pendingForMe, activePermission } = usePermissions();
+  const { 
+    myPermissions, 
+    pendingForMe, 
+    activePermission,
+    approveAsWali,
+    approveAsPiket,
+    reject
+  } = usePermissions();
+  const { showToast } = useAppContext();
+
+  const [rejectingPermId, setRejectingPermId] = useState<string | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
 
   if (!currentUser) return null;
 
@@ -28,6 +43,46 @@ export default function DashboardPage() {
     { label: 'Aktif Sekarang', value: stats.active, icon: CheckCircle2, color: 'bg-emerald-500', shadow: 'shadow-emerald-500/20' },
     { label: 'Ditolak', value: stats.rejected, icon: XCircle, color: 'bg-red-500', shadow: 'shadow-red-500/20' },
   ];
+
+  // Inline approval handler for Guru / Staff roles in dashboard
+  const handleApprove = (id: string, comment?: string) => {
+    const perm = myPermissions.find(p => p.id === id) || pendingForMe.find(p => p.id === id);
+    if (!perm) return;
+    if (currentUser.role === UserRole.WALI_KELAS) {
+      approveAsWali(id, comment);
+      showToast('Izin berhasil disetujui dan diteruskan ke Guru Piket', 'success');
+    } else if (currentUser.role === UserRole.GURU_PIKET) {
+      approveAsPiket(id, comment);
+      showToast('Izin disetujui! QR Code sudah aktif untuk siswa', 'success');
+    } else if (currentUser.role === UserRole.ADMIN) {
+      if (perm.status === PermissionStatus.PENDING) {
+        approveAsWali(id, comment);
+        showToast('Izin berhasil disetujui sebagai Wali Kelas', 'success');
+      } else {
+        approveAsPiket(id, comment);
+        showToast('Izin berhasil disetujui sebagai Guru Piket', 'success');
+      }
+    }
+  };
+
+  const handleReject = (id: string, reason?: string) => {
+    reject(id, reason);
+    showToast('Pengajuan izin telah ditolak', 'error');
+  };
+
+  const needsMyAction = (p: any) => {
+    if (!currentUser) return false;
+    if (currentUser.role === UserRole.WALI_KELAS) {
+      return p.status === PermissionStatus.PENDING && p.kelas === currentUser.kelas;
+    }
+    if (currentUser.role === UserRole.GURU_PIKET) {
+      return p.status === PermissionStatus.APPROVED_WALI;
+    }
+    if (currentUser.role === UserRole.ADMIN) {
+      return p.status === PermissionStatus.PENDING || p.status === PermissionStatus.APPROVED_WALI;
+    }
+    return false;
+  };
 
   return (
     <AppShell>
@@ -119,6 +174,33 @@ export default function DashboardPage() {
           </div>
         )}
 
+        {/* Staff view: Pending Approvals Grid */}
+        {currentUser.role !== UserRole.SISWA && pendingForMe.length > 0 && (
+          <div className="xl:col-span-3 space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="font-bold text-slate-800 text-sm flex items-center gap-2">
+                <Clock size={16} className="text-amber-500 animate-pulse" />
+                Persetujuan Menunggu Tindakan Anda ({pendingForMe.length})
+              </h3>
+              <Link href="/approval" className="text-xs font-bold text-blue-600 hover:underline">
+                Kelola Semua
+              </Link>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {pendingForMe.slice(0, 3).map(p => (
+                <PermissionCard
+                  key={p.id}
+                  permission={p}
+                  onApprove={handleApprove}
+                  onReject={handleReject}
+                  userRole={currentUser.role}
+                  showActions={true}
+                />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Recent Permissions Table */}
         <div className={currentUser.role === UserRole.SISWA ? 'xl:col-span-2' : 'xl:col-span-3'}>
           <div className="card-lg overflow-hidden">
@@ -133,7 +215,10 @@ export default function DashboardPage() {
                 <table className="w-full text-left">
                   <thead className="bg-slate-50 border-b border-slate-100">
                     <tr>
-                      {['Siswa', 'Alasan', 'Waktu', 'Status'].map(h => (
+                      {(currentUser.role !== UserRole.SISWA 
+                        ? ['Siswa', 'Alasan', 'Waktu', 'Status', 'Tindakan'] 
+                        : ['Siswa', 'Alasan', 'Waktu', 'Status']
+                      ).map(h => (
                         <th key={h} className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{h}</th>
                       ))}
                     </tr>
@@ -161,6 +246,38 @@ export default function DashboardPage() {
                         <td className="px-5 py-3.5">
                           <StatusBadge status={p.status} />
                         </td>
+                        {currentUser.role !== UserRole.SISWA && (
+                          <td className="px-5 py-3.5 whitespace-nowrap">
+                            {needsMyAction(p) ? (
+                              <div className="flex items-center gap-2">
+                                <button
+                                  onClick={() => handleApprove(p.id)}
+                                  className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm border border-emerald-250 select-none cursor-pointer"
+                                  title="Setujui Pengajuan"
+                                >
+                                  <CheckCircle2 size={12} />
+                                  Setujui
+                                </button>
+                                <button
+                                  onClick={() => setRejectingPermId(p.id)}
+                                  className="px-2.5 py-1 bg-red-50 hover:bg-red-100 text-red-700 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 shadow-sm border border-red-250 select-none cursor-pointer"
+                                  title="Tolak Pengajuan"
+                                >
+                                  <XCircle size={12} />
+                                  Tolak
+                                </button>
+                              </div>
+                            ) : (
+                              <Link
+                                href={`/izin/${p.id}`}
+                                className="px-2.5 py-1 bg-slate-50 hover:bg-slate-100 text-slate-650 rounded-lg text-[11px] font-bold transition-all flex items-center gap-1 inline-flex border border-slate-200 select-none hover:text-blue-650"
+                              >
+                                <Eye size={12} />
+                                Detail
+                              </Link>
+                            )}
+                          </td>
+                        )}
                       </tr>
                     ))}
                   </tbody>
@@ -175,6 +292,56 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+
+      {/* Reject Confirmation Modal for Table Quick Actions */}
+      <Modal 
+        isOpen={rejectingPermId !== null} 
+        onClose={() => {
+          setRejectingPermId(null);
+          setRejectReason('');
+        }} 
+        title="Konfirmasi Alasan Penolakan" 
+        size="sm"
+      >
+        <div className="space-y-4">
+          <div className="p-3 bg-red-50 border border-red-100 rounded-xl flex gap-2 text-xs text-red-700">
+            <AlertCircle size={16} className="flex-shrink-0" />
+            <p>Anda wajib memberikan alasan penolakan agar siswa memahami kendala pengajuan perizinan mereka.</p>
+          </div>
+          
+          <textarea
+            rows={3}
+            value={rejectReason}
+            onChange={e => setRejectReason(e.target.value)}
+            placeholder="Tulis alasan penolakan, contoh: Dokumen/Surat Izin Orang Tua belum dilampirkan atau Alasan tidak mendesak..."
+            className="w-full px-4 py-3 rounded-xl border border-slate-200 focus:border-red-400 focus:ring-4 focus:ring-red-400/10 outline-none resize-none text-xs"
+          />
+          
+          <div className="grid grid-cols-2 gap-3">
+            <button 
+              onClick={() => {
+                setRejectingPermId(null);
+                setRejectReason('');
+              }} 
+              className="py-2.5 rounded-xl border border-slate-200 text-slate-650 text-xs font-semibold hover:bg-slate-50 transition-colors"
+            >
+              Batal
+            </button>
+            <button
+              onClick={() => {
+                if (!rejectReason.trim() || !rejectingPermId) return;
+                handleReject(rejectingPermId, rejectReason);
+                setRejectingPermId(null);
+                setRejectReason('');
+              }}
+              disabled={!rejectReason.trim()}
+              className="py-2.5 rounded-xl bg-red-600 disabled:opacity-50 text-white text-xs font-bold hover:bg-red-700 transition-colors shadow-md shadow-red-500/15"
+            >
+              Kirim & Tolak Izin
+            </button>
+          </div>
+        </div>
+      </Modal>
     </AppShell>
   );
 }

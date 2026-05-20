@@ -46,15 +46,35 @@ export const MOCK_PERMISSIONS: Permission[] = [
     approvedByWaliId: 'u5', approvedByWaliName: 'Ibu Ratna Sari',
     approvedByPiketId: 'u7', approvedByPiketName: 'Pak Andi Wijaya',
     suratUrl: '/surat/P-001.png',
+    category: 'keperluan',
+    comments: [
+      { id: 'c1', userName: 'Ibu Ratna Sari', userRole: UserRole.WALI_KELAS, text: 'Silakan, berkas pernikahan sudah dilampirkan.', timestamp: d(-5.5) },
+      { id: 'c2', userName: 'Pak Andi Wijaya', userRole: UserRole.GURU_PIKET, text: 'Hati-hati di jalan.', timestamp: d(-5) }
+    ],
+    auditLog: [
+      { id: 'a1', action: 'Diajukan', actorName: 'Budi Santoso', actorRole: UserRole.SISWA, timestamp: d(-6) },
+      { id: 'a2', action: 'Disetujui Wali Kelas', actorName: 'Ibu Ratna Sari', actorRole: UserRole.WALI_KELAS, timestamp: d(-5.5), details: 'Komentar: Silakan, berkas pernikahan sudah dilampirkan.' },
+      { id: 'a3', action: 'Izin Aktif (Disetujui Piket)', actorName: 'Pak Andi Wijaya', actorRole: UserRole.GURU_PIKET, timestamp: d(-5), details: 'Komentar: Hati-hati di jalan.' },
+      { id: 'a4', action: 'Siswa Kembali', actorName: 'Pak Slamet', actorRole: UserRole.SECURITY, timestamp: d(-3.5), details: 'Dicatat kembali di gerbang depan.' }
+    ]
   },
   {
     id: 'P-002', studentId: 'u2', studentName: 'Siti Rahayu', kelas: 'XII IPA 1',
-    reason: 'Sakit - Perlu periksa ke dokter',
+    reason: 'Sakit - Perlu periksa ke dokter gigi karena sakit gigi hebat',
     departureTime: d(-2), estimatedReturnTime: d(0),
     status: PermissionStatus.APPROVED_PIKET, createdAt: d(-3),
     approvedByWaliId: 'u5', approvedByWaliName: 'Ibu Ratna Sari',
     approvedByPiketId: 'u7', approvedByPiketName: 'Pak Andi Wijaya',
     suratUrl: '/surat/P-002.png',
+    category: 'sakit',
+    comments: [
+      { id: 'c3', userName: 'Ibu Ratna Sari', userRole: UserRole.WALI_KELAS, text: 'Izin disetujui, lekas sembuh Siti.', timestamp: d(-2.5) }
+    ],
+    auditLog: [
+      { id: 'a5', action: 'Diajukan', actorName: 'Siti Rahayu', actorRole: UserRole.SISWA, timestamp: d(-3) },
+      { id: 'a6', action: 'Disetujui Wali Kelas', actorName: 'Ibu Ratna Sari', actorRole: UserRole.WALI_KELAS, timestamp: d(-2.5) },
+      { id: 'a7', action: 'Izin Aktif (Disetujui Piket)', actorName: 'Pak Andi Wijaya', actorRole: UserRole.GURU_PIKET, timestamp: d(-2), details: 'Menerbitkan QR Code Perizinan.' }
+    ]
   },
   {
     id: 'P-003', studentId: 'u3', studentName: 'Ahmad Fauzi', kelas: 'XII IPS 2',
@@ -62,25 +82,51 @@ export const MOCK_PERMISSIONS: Permission[] = [
     departureTime: d(1), estimatedReturnTime: d(3),
     status: PermissionStatus.APPROVED_WALI, createdAt: d(-1),
     approvedByWaliId: 'u6', approvedByWaliName: 'Bapak Hendro',
+    category: 'dispensasi',
+    comments: [
+      { id: 'c4', userName: 'Bapak Hendro', userRole: UserRole.WALI_KELAS, text: 'Lengkapi dokumen bank saat kembali.', timestamp: d(-0.8) }
+    ],
+    auditLog: [
+      { id: 'a8', action: 'Diajukan', actorName: 'Ahmad Fauzi', actorRole: UserRole.SISWA, timestamp: d(-1) },
+      { id: 'a9', action: 'Disetujui Wali Kelas', actorName: 'Bapak Hendro', actorRole: UserRole.WALI_KELAS, timestamp: d(-0.8) }
+    ]
   },
   {
     id: 'P-004', studentId: 'u1', studentName: 'Budi Santoso', kelas: 'XII IPA 1',
     reason: 'Kompetisi olimpiade matematika tingkat kabupaten',
     departureTime: d(2), estimatedReturnTime: d(6),
     status: PermissionStatus.PENDING, createdAt: d(0),
+    category: 'dispensasi',
+    comments: [],
+    auditLog: [
+      { id: 'a10', action: 'Diajukan', actorName: 'Budi Santoso', actorRole: UserRole.SISWA, timestamp: d(0) }
+    ]
   },
   {
     id: 'P-005', studentId: 'u4', studentName: 'Dewi Kartika', kelas: 'XI IPA 3',
     reason: 'Keperluan pribadi yang mendesak',
     departureTime: d(-8), estimatedReturnTime: d(-6),
     status: PermissionStatus.REJECTED, createdAt: d(-9),
-    rejectedReason: 'Alasan tidak memenuhi syarat perizinan',
+    rejectedReason: 'Alasan tidak memenuhi syarat perizinan sekolah',
+    category: 'lainnya',
+    comments: [
+      { id: 'c5', userName: 'Ibu Ratna Sari', userRole: UserRole.WALI_KELAS, text: 'Keperluan pribadi harus lebih spesifik. Ditolak.', timestamp: d(-8.5) }
+    ],
+    auditLog: [
+      { id: 'a11', action: 'Diajukan', actorName: 'Dewi Kartika', actorRole: UserRole.SISWA, timestamp: d(-9) },
+      { id: 'a12', action: 'Ditolak', actorName: 'Ibu Ratna Sari', actorRole: UserRole.WALI_KELAS, timestamp: d(-8.5), details: 'Alasan: Alasan tidak memenuhi syarat perizinan sekolah' }
+    ]
   },
   {
     id: 'P-006', studentId: 'u2', studentName: 'Siti Rahayu', kelas: 'XII IPA 1',
     reason: 'Latihan paduan suara untuk lomba tingkat provinsi',
     departureTime: d(3), estimatedReturnTime: d(5),
     status: PermissionStatus.PENDING, createdAt: d(1),
+    category: 'dispensasi',
+    comments: [],
+    auditLog: [
+      { id: 'a13', action: 'Diajukan', actorName: 'Siti Rahayu', actorRole: UserRole.SISWA, timestamp: d(1) }
+    ]
   },
   {
     id: 'P-007', studentId: 'u3', studentName: 'Ahmad Fauzi', kelas: 'XII IPS 2',
@@ -90,7 +136,16 @@ export const MOCK_PERMISSIONS: Permission[] = [
     approvedByWaliId: 'u6', approvedByWaliName: 'Bapak Hendro',
     approvedByPiketId: 'u7', approvedByPiketName: 'Pak Andi Wijaya',
     nomorPolisi: 'B 1234 XYZ',
-    suratUrl: '/surat/P-007.png',
+    category: 'dispensasi',
+    comments: [
+      { id: 'c6', userName: 'Bapak Hendro', userRole: UserRole.WALI_KELAS, text: 'Jaga nama baik sekolah.', timestamp: d(-4.5) }
+    ],
+    auditLog: [
+      { id: 'a14', action: 'Diajukan', actorName: 'Ahmad Fauzi', actorRole: UserRole.SISWA, timestamp: d(-5) },
+      { id: 'a15', action: 'Disetujui Wali Kelas', actorName: 'Bapak Hendro', actorRole: UserRole.WALI_KELAS, timestamp: d(-4.5) },
+      { id: 'a16', action: 'Izin Aktif (Disetujui Piket)', actorName: 'Pak Andi Wijaya', actorRole: UserRole.GURU_PIKET, timestamp: d(-4) },
+      { id: 'a17', action: 'Siswa Kembali', actorName: 'Pak Slamet', actorRole: UserRole.SECURITY, timestamp: d(-2.5), details: 'Kembali dengan kendaraan berplat B 1234 XYZ.' }
+    ]
   },
 ];
 
@@ -105,6 +160,7 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
     timestamp: d(-1),
     read: false,
     type: 'success',
+    permissionId: 'P-002'
   },
   {
     id: 'n2',
@@ -113,6 +169,7 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
     timestamp: d(0),
     read: false,
     type: 'info',
+    permissionId: 'P-004'
   },
   {
     id: 'n3',
@@ -121,6 +178,7 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
     timestamp: d(-8),
     read: true,
     type: 'error',
+    permissionId: 'P-005'
   },
   {
     id: 'n4',
@@ -129,6 +187,7 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
     timestamp: d(-3),
     read: true,
     type: 'info',
+    permissionId: 'P-001'
   },
   {
     id: 'n5',
@@ -137,6 +196,7 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
     timestamp: d(-1),
     read: false,
     type: 'warning',
+    permissionId: 'P-003'
   },
   {
     id: 'n6',
@@ -145,6 +205,7 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
     timestamp: d(1),
     read: false,
     type: 'info',
+    permissionId: 'P-006'
   },
   {
     id: 'n7',
@@ -153,6 +214,7 @@ export const MOCK_NOTIFICATIONS: Notification[] = [
     timestamp: d(-2),
     read: true,
     type: 'success',
+    permissionId: 'P-002'
   },
 ];
 
