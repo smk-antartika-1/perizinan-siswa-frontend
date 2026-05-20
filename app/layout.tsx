@@ -2,6 +2,8 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 
+import PWAInstallPrompt from '@/components/ui/PWAInstallPrompt';
+
 export const metadata: Metadata = {
   title: 'E-Izin Siswa - Sistem Perizinan Digital',
   description: 'Sistem perizinan keluar-masuk siswa berbasis QR Code untuk sekolah.',
@@ -28,24 +30,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <AppProvider>
           {children}
         </AppProvider>
-        <ServiceWorkerScript />
+        <PWAInstallPrompt />
       </body>
     </html>
-  );
-}
-
-function ServiceWorkerScript() {
-  return (
-    <script
-      dangerouslySetInnerHTML={{
-        __html: `
-          if ('serviceWorker' in navigator) {
-            window.addEventListener('load', function() {
-              navigator.serviceWorker.register('/sw.js').catch(function() {});
-            });
-          }
-        `,
-      }}
-    />
   );
 }
