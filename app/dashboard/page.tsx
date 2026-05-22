@@ -244,7 +244,7 @@ export default function DashboardPage() {
                           {formatDateTime(p.createdAt)}
                         </td>
                         <td className="px-5 py-3.5">
-                          <StatusBadge status={p.status} />
+                          <StatusBadge permission={p} />
                         </td>
                         {currentUser.role !== UserRole.SISWA && (
                           <td className="px-5 py-3.5 whitespace-nowrap">

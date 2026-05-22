@@ -10,6 +10,19 @@ import { usePermissions } from "@/hooks/usePermissions";
 import { useAppContext } from "@/context/AppContext";
 import { PermissionStatus, UserRole } from "@/lib/types";
 
+function toTimeInputValue(date: Date) {
+  return `${String(date.getHours()).padStart(2, "0")}:${String(
+    date.getMinutes(),
+  ).padStart(2, "0")}`;
+}
+
+function buildEstimatedReturnTime(timeValue: string) {
+  const [hours, minutes] = timeValue.split(":").map(Number);
+  const date = new Date();
+  date.setHours(hours, minutes, 0, 0);
+  return date;
+}
+
 export default function IzinPage() {
   const { currentUser, canAccess } = useAuth();
   const { addPermission } = usePermissions();
@@ -20,6 +33,10 @@ export default function IzinPage() {
   const [category, setCategory] = useState<
     "sakit" | "keperluan" | "dispensasi" | "lainnya"
   >("keperluan");
+  const [willNotReturn, setWillNotReturn] = useState(false);
+  const [estimatedReturnTime, setEstimatedReturnTime] = useState(() =>
+    toTimeInputValue(new Date(Date.now() + 2 * 3600000)),
+  );
   const [nomorPolisi, setNomorPolisi] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -39,6 +56,15 @@ export default function IzinPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
+    const estimatedReturnDate = willNotReturn
+      ? null
+      : buildEstimatedReturnTime(estimatedReturnTime);
+
+    if (!willNotReturn && estimatedReturnDate && estimatedReturnDate <= new Date()) {
+      showToast("Estimasi kembali harus setelah jam berangkat.", "error");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -48,13 +74,13 @@ export default function IzinPage() {
         kelas: currentUser.kelas || "",
         reason,
         departureTime: new Date().toISOString(),
-        estimatedReturnTime:
-          category === "sakit"
-            ? new Date(new Date().setHours(23, 59, 59, 999)).toISOString()
-            : new Date(Date.now() + 2 * 3600000).toISOString(),
+        estimatedReturnTime: estimatedReturnDate
+          ? estimatedReturnDate.toISOString()
+          : null,
         status: PermissionStatus.PENDING,
         nomorPolisi: nomorPolisi || undefined,
         category,
+        willNotReturn,
       });
       showToast("Pengajuan izin berhasil dikirim.", "success");
       router.push("/dashboard");
@@ -112,7 +138,15 @@ export default function IzinPage() {
               <select
                 required
                 value={category}
-                onChange={(e) => setCategory(e.target.value as any)}
+                onChange={(e) => {
+                  const nextCategory = e.target.value as
+                    | "sakit"
+                    | "keperluan"
+                    | "dispensasi"
+                    | "lainnya";
+                  setCategory(nextCategory);
+                  setWillNotReturn(nextCategory === "sakit");
+                }}
                 className="input"
               >
                 <option value="keperluan">Keperluan Keluarga / Pribadi</option>
@@ -147,6 +181,7 @@ export default function IzinPage() {
                     onClick={() => {
                       setReason(p.label);
                       setCategory(p.category);
+                      setWillNotReturn(p.category === "sakit");
                     }}
                     className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-blue-100 hover:text-blue-700 text-slate-500 transition-colors font-medium animate-transition"
                   >
@@ -167,10 +202,28 @@ export default function IzinPage() {
               </div>
               <div>
                 <label className="label">Estimasi Kembali</label>
-                <div className="input bg-slate-50 flex items-center gap-2 cursor-not-allowed text-slate-500">
-                  <Clock size={15} />
-                  <span>{category === "sakit" ? "Selesai KBM" : "+2 Jam"}</span>
-                </div>
+                <input
+                  type="time"
+                  required={!willNotReturn}
+                  disabled={willNotReturn}
+                  value={estimatedReturnTime}
+                  onChange={(e) => setEstimatedReturnTime(e.target.value)}
+                  className="input disabled:bg-slate-50 disabled:text-slate-350 disabled:cursor-not-allowed"
+                />
+                <label className="mt-2 flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    checked={willNotReturn}
+                    onChange={(e) => setWillNotReturn(e.target.checked)}
+                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
+                  />
+                  Tidak kembali ke sekolah hari ini
+                </label>
+                <p className="text-[11px] text-slate-400 mt-1">
+                  {willNotReturn
+                    ? "Estimasi kembali dinonaktifkan untuk izin pulang."
+                    : "Pilih jam perkiraan siswa kembali ke sekolah."}
+                </p>
               </div>
             </div>
 

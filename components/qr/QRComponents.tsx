@@ -5,13 +5,14 @@ import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle, XCircle, ScanLine, QrCode, Camera } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Permission, PermissionStatus } from "@/lib/types";
-import { generateQRValue } from "@/lib/utils";
+import { generateQRValue, getDisplayStatus } from "@/lib/utils";
 
 // ============================================================
 // QR Generator - generates QR from direct image URL
 // ============================================================
 export function QRGenerator({ permission }: { permission: Permission }) {
-  if (permission.status !== PermissionStatus.APPROVED_PIKET) return null;
+  if (getDisplayStatus(permission) !== PermissionStatus.APPROVED_PIKET)
+    return null;
 
   const qrValue = generateQRValue(permission);
 
@@ -23,7 +24,6 @@ export function QRGenerator({ permission }: { permission: Permission }) {
       <div className="text-center">
         <p className="font-bold text-slate-800">{permission.studentName}</p>
         <p className="text-sm text-slate-500">{permission.kelas}</p>
-        <p className="font-mono text-xs text-blue-600 mt-1">{permission.id}</p>
       </div>
       <p className="text-xs text-slate-400 text-center">
         Tunjukkan kode ini kepada petugas security saat keluar/masuk sekolah
@@ -100,7 +100,7 @@ export function QRScanner({
           permissions.find(
             (p) =>
               decodedText.includes(p.id) &&
-              p.status === PermissionStatus.APPROVED_PIKET,
+              getDisplayStatus(p) === PermissionStatus.APPROVED_PIKET,
           ) || null;
 
         if (perm) {
@@ -150,7 +150,7 @@ export function QRScanner({
 
     setTimeout(() => {
       const active = permissions.find(
-        (p) => p.status === PermissionStatus.APPROVED_PIKET,
+        (p) => getDisplayStatus(p) === PermissionStatus.APPROVED_PIKET,
       );
       if (active) {
         setScannedPermission(active);

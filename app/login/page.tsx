@@ -125,42 +125,6 @@ export default function LoginPage() {
               )}
             </button>
 
-            {/* Credential Helper */}
-            <div className="mt-6 p-4 rounded-xl bg-slate-800/80 border border-slate-700/50 text-xs text-slate-400">
-              <p className="font-bold text-slate-300 mb-2">Akun Demo:</p>
-              <div className="space-y-1.5">
-                <div className="flex justify-between">
-                  <span>Siswa (Budi)</span>
-                  <span className="font-mono text-blue-400">
-                    2024001 / 2024001
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Wali Kelas</span>
-                  <span className="font-mono text-blue-400">
-                    NIP001 / password
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Guru Piket</span>
-                  <span className="font-mono text-blue-400">
-                    NIP002 / password
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Security</span>
-                  <span className="font-mono text-blue-400">
-                    SEC001 / password
-                  </span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Admin</span>
-                  <span className="font-mono text-blue-400">
-                    ADM001 / password
-                  </span>
-                </div>
-              </div>
-            </div>
           </form>
         </motion.div>
 

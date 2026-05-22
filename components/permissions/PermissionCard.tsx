@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Permission, PermissionStatus, UserRole } from '@/lib/types';
-import { formatDateTime, formatTime, generateQRValue } from '@/lib/utils';
+import { formatDateTime, formatEstimatedReturn, formatTime, generateQRValue, getDisplayStatus } from '@/lib/utils';
 import { useAppContext } from '@/context/AppContext';
 import Modal from '@/components/ui/Modal';
 import { QRCodeSVG } from 'qrcode.react';
@@ -53,7 +53,11 @@ export default function PermissionCard({
 
   // Stepper Mini config
   const isWaliDone = p.status !== PermissionStatus.PENDING && p.status !== PermissionStatus.REJECTED;
-  const isPiketDone = p.status === PermissionStatus.APPROVED_PIKET || p.status === PermissionStatus.COMPLETED;
+  const displayStatus = getDisplayStatus(p);
+  const isPiketDone =
+    displayStatus === PermissionStatus.APPROVED_PIKET ||
+    displayStatus === PermissionStatus.EXPIRED ||
+    p.status === PermissionStatus.COMPLETED;
   const isReturnDone = p.status === PermissionStatus.COMPLETED || p.category === 'sakit';
 
   return (
@@ -89,8 +93,8 @@ export default function PermissionCard({
             </div>
 
             <div className="flex items-center gap-1.5 flex-shrink-0">
-              <StatusBadge status={p.status} />
-              {p.status === PermissionStatus.APPROVED_PIKET && (
+              <StatusBadge permission={p} />
+              {displayStatus === PermissionStatus.APPROVED_PIKET && (
                 <button
                   onClick={() => setQrOpen(true)}
                   className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
@@ -203,7 +207,7 @@ export default function PermissionCard({
                       <div className="flex items-center gap-1">
                         <Clock size={12} className="text-slate-400" />
                         <span className="text-xs font-semibold text-slate-700">
-                          {p.category === 'sakit' ? 'Bebas (Sakit)' : formatTime(p.estimatedReturnTime)}
+                          {formatEstimatedReturn(p)}
                         </span>
                       </div>
                     </div>
@@ -318,7 +322,7 @@ export default function PermissionCard({
           </div>
           <div className="text-center">
             <h4 className="font-bold text-slate-800 text-base">{p.studentName}</h4>
-            <p className="text-xs text-slate-400 font-semibold mt-0.5">{p.kelas} · ID: {p.id}</p>
+            <p className="text-xs text-slate-400 font-semibold mt-0.5">{p.kelas}</p>
           </div>
           <p className="text-xs text-slate-450 text-center leading-relaxed">
             Tiket QR perizinan aktif. Berikan struk QR fisik hasil cetak Guru Piket ke siswa atau gunakan lembar digital ini di pintu gerbang.

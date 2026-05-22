@@ -24,9 +24,12 @@ import { useAppContext } from "@/context/AppContext";
 import { PermissionStatus, UserRole, STATUS_CONFIG } from "@/lib/types";
 import {
   formatDate,
+  formatEstimatedReturn,
+  formatEstimatedReturnDateTime,
   formatTime,
   formatDateTime,
   generateQRValue,
+  getDisplayStatus,
 } from "@/lib/utils";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { apiRequest } from "@/lib/api";
@@ -63,7 +66,7 @@ export default function PermissionDetailPage() {
             Detail Perizinan Tidak Ditemukan
           </h2>
           <p className="text-sm">
-            Maaf, izin dengan nomor ID {id} tidak terdaftar di sistem.
+            Maaf, data perizinan tidak terdaftar di sistem.
           </p>
           <button onClick={() => router.back()} className="btn-secondary mt-2">
             <ChevronLeft size={16} /> Kembali
@@ -112,11 +115,11 @@ export default function PermissionDetailPage() {
         });
       }
       await refreshData();
-      showToast(`Perizinan ${permission.id} berhasil disetujui.`, "success");
+      showToast("Perizinan berhasil disetujui.", "success");
       setCommentText("");
       setNomorPolisiInput("");
     } catch {
-      showToast(`Gagal menyetujui perizinan ${permission.id}.`, "error");
+      showToast("Gagal menyetujui perizinan.", "error");
     }
   };
 
@@ -133,15 +136,25 @@ export default function PermissionDetailPage() {
         body: JSON.stringify({ reason: commentText }),
       });
       await refreshData();
-      showToast(`Perizinan ${permission.id} telah ditolak.`, "info");
+      showToast("Perizinan telah ditolak.", "info");
       setCommentText("");
     } catch {
-      showToast(`Gagal menolak perizinan ${permission.id}.`, "error");
+      showToast("Gagal menolak perizinan.", "error");
     }
   };
 
   const handleToggleReturn = () => {
     if (!currentUser) return;
+    const canManageReturn =
+      currentUser.role === UserRole.GURU_PIKET ||
+      currentUser.role === UserRole.SECURITY ||
+      currentUser.role === UserRole.WALI_KELAS ||
+      currentUser.role === UserRole.ADMIN;
+    if (!canManageReturn) {
+      showToast("Kepulangan siswa hanya dapat dicatat oleh petugas sekolah.", "error");
+      return;
+    }
+
     const nowStr = new Date().toISOString();
     const isCompleted = permission.status === PermissionStatus.COMPLETED;
 
@@ -200,7 +213,7 @@ export default function PermissionDetailPage() {
       doc.write(`
         <html>
           <head>
-            <title>Cetak Tiket QR Perizinan - ${permission.id}</title>
+            <title>Cetak Tiket QR Perizinan - ${permission.studentName}</title>
             <style>
               body {
                 font-family: 'Courier New', Courier, monospace;
@@ -254,7 +267,7 @@ export default function PermissionDetailPage() {
                 SMK ANTARTIKA 1 SIDOARJO<br/>
                 <span style="font-size:10px;">TIKET IZIN KELUAR DIGITAL</span>
               </div>
-              <div class="title">ID TIKET: ${permission.id}</div>
+              <div class="title">TIKET PERIZINAN</div>
               <div class="qr-box">
                 ${printAreaRef.current.querySelector(".qr-container")?.innerHTML || ""}
               </div>
@@ -264,7 +277,7 @@ export default function PermissionDetailPage() {
                 <strong>Kategori:</strong> ${categoryLabels[permission.category || "lainnya"]}<br/>
                 <strong>Alasan:</strong> "${permission.reason}"<br/>
                 <strong>Berangkat:</strong> ${formatDateTime(permission.departureTime)}<br/>
-                <strong>Estimasi Kembali:</strong> ${formatDateTime(permission.estimatedReturnTime)}<br/>
+                <strong>Estimasi Kembali:</strong> ${formatEstimatedReturnDateTime(permission)}<br/>
                 ${permission.nomorPolisi ? `<strong>No. Polisi:</strong> ${permission.nomorPolisi}<br/>` : ""}
                 <strong>Pemberi Izin:</strong> ${permission.approvedByPiketName || "Guru Piket"}<br/>
               </div>
@@ -287,6 +300,8 @@ export default function PermissionDetailPage() {
       doc.close();
     }
   };
+
+  const displayStatus = getDisplayStatus(permission);
 
   // Stepper Visual Configuration
   const steps = [
@@ -317,8 +332,9 @@ export default function PermissionDetailPage() {
         ? `Dicetak: ${permission.approvedByPiketName}`
         : "Menunggu Guru Piket",
       done:
-        permission.status === PermissionStatus.APPROVED_PIKET ||
-        permission.status === PermissionStatus.COMPLETED,
+        displayStatus === PermissionStatus.APPROVED_PIKET ||
+        displayStatus === PermissionStatus.EXPIRED ||
+        displayStatus === PermissionStatus.COMPLETED,
       active: permission.status === PermissionStatus.APPROVED_WALI,
       rejected:
         permission.status === PermissionStatus.REJECTED &&
@@ -337,10 +353,11 @@ export default function PermissionDetailPage() {
             ? `Tiba: ${formatTime(permission.actualReturnTime)}`
             : "Siswa Belum Kembali",
       done:
-        permission.status === PermissionStatus.COMPLETED ||
+        displayStatus === PermissionStatus.COMPLETED ||
         permission.category === "sakit",
       active:
-        permission.status === PermissionStatus.APPROVED_PIKET &&
+        (displayStatus === PermissionStatus.APPROVED_PIKET ||
+          displayStatus === PermissionStatus.EXPIRED) &&
         permission.category !== "sakit",
       isSakit: permission.category === "sakit",
       timestamp: permission.actualReturnTime,
@@ -364,11 +381,18 @@ export default function PermissionDetailPage() {
     return false;
   };
 
-  const isPiketOrAdmin =
+  const canPrintTicket =
     currentUser &&
     (currentUser.role === UserRole.GURU_PIKET ||
-      currentUser.role === UserRole.ADMIN ||
-      currentUser.role === UserRole.SECURITY);
+      currentUser.role === UserRole.SECURITY ||
+      currentUser.role === UserRole.ADMIN);
+
+  const canManageReturn =
+    currentUser &&
+    (currentUser.role === UserRole.GURU_PIKET ||
+      currentUser.role === UserRole.SECURITY ||
+      currentUser.role === UserRole.WALI_KELAS ||
+      currentUser.role === UserRole.ADMIN);
 
   return (
     <AppShell>
@@ -388,17 +412,17 @@ export default function PermissionDetailPage() {
             <ChevronLeft size={14} /> Kembali ke halaman sebelumnya
           </button>
           <div className="flex items-center gap-3">
-            <h1 className="page-title">Detail Perizinan: {permission.id}</h1>
-            <StatusBadge status={permission.status} />
+            <h1 className="page-title">Detail Perizinan</h1>
+            <StatusBadge permission={permission} />
           </div>
         </div>
 
         {/* Guru Piket & Admin Actions */}
-        {isPiketOrAdmin && (
+        {(canPrintTicket || canManageReturn) && (
           <div className="flex flex-wrap items-center gap-3">
             {/* Show Print Ticket button if QR is issued */}
-            {(permission.status === PermissionStatus.APPROVED_PIKET ||
-              permission.status === PermissionStatus.COMPLETED) && (
+            {canPrintTicket && (displayStatus === PermissionStatus.APPROVED_PIKET ||
+              displayStatus === PermissionStatus.COMPLETED) && (
               <button
                 onClick={handlePrint}
                 className="btn-primary py-2.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 shadow-md shadow-blue-500/20"
@@ -413,8 +437,9 @@ export default function PermissionDetailPage() {
                 <ShieldCheck size={14} /> Sakit (Tidak Wajib Kembali)
               </span>
             ) : (
-              (permission.status === PermissionStatus.APPROVED_PIKET ||
-                permission.status === PermissionStatus.COMPLETED) && (
+              canManageReturn && (displayStatus === PermissionStatus.APPROVED_PIKET ||
+                displayStatus === PermissionStatus.EXPIRED ||
+                displayStatus === PermissionStatus.COMPLETED) && (
                 <label className="flex items-center gap-2 px-4 py-2.5 bg-white border border-slate-200 rounded-xl hover:bg-slate-50 cursor-pointer transition-colors shadow-sm select-none">
                   <input
                     type="checkbox"
@@ -506,13 +531,13 @@ export default function PermissionDetailPage() {
                   <div className="flex items-center gap-2 mt-1 text-slate-600">
                     <Calendar size={13} className="text-slate-400" />
                     <span className="text-xs font-medium">
-                      {formatDate(permission.estimatedReturnTime)}
+                      {permission.estimatedReturnTime
+                        ? formatDate(permission.estimatedReturnTime)
+                        : "Tidak Kembali"}
                     </span>
                     <Clock size={13} className="text-slate-400 ml-1" />
                     <span className="text-xs font-medium">
-                      {permission.category === "sakit"
-                        ? "Selesai KBM (Bebas)"
-                        : `${formatTime(permission.estimatedReturnTime)} WIB`}
+                      {formatEstimatedReturn(permission)}
                     </span>
                   </div>
                 </div>
@@ -744,8 +769,9 @@ export default function PermissionDetailPage() {
           )}
 
           {/* Ticket Preview Card (If QR issued) */}
-          {(permission.status === PermissionStatus.APPROVED_PIKET ||
-            permission.status === PermissionStatus.COMPLETED) && (
+          {(displayStatus === PermissionStatus.APPROVED_PIKET ||
+            displayStatus === PermissionStatus.EXPIRED ||
+            displayStatus === PermissionStatus.COMPLETED) && (
             <div className="card p-6 border-slate-200 bg-slate-50">
               <div className="flex items-center gap-2 pb-4 mb-4 border-b border-slate-200">
                 <Printer size={16} className="text-slate-600" />
@@ -756,7 +782,7 @@ export default function PermissionDetailPage() {
 
               <div className="flex flex-col items-center p-4 bg-white border border-slate-200 rounded-3xl shadow-sm text-center">
                 <p className="font-mono text-xs font-bold text-slate-400">
-                  ID TIKET: {permission.id}
+                  TIKET PERIZINAN
                 </p>
 
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 my-4">
@@ -774,7 +800,8 @@ export default function PermissionDetailPage() {
                   {permission.kelas}
                 </p>
                 <p className="text-[10px] text-blue-600 font-semibold uppercase tracking-wider mt-3 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-full">
-                  {permission.status === PermissionStatus.COMPLETED
+                  {displayStatus === PermissionStatus.COMPLETED ||
+                  displayStatus === PermissionStatus.EXPIRED
                     ? "Tiket Expired (Selesai)"
                     : "Tiket Aktif (Scan Gate)"}
                 </p>

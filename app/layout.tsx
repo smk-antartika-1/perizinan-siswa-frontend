@@ -4,6 +4,8 @@ import { AppProvider } from '@/context/AppContext';
 
 import PWAInstallPrompt from '@/components/ui/PWAInstallPrompt';
 
+export const dynamic = 'force-dynamic';
+
 export const metadata: Metadata = {
   title: 'E-Izin Siswa - Sistem Perizinan Digital',
   description: 'Sistem perizinan keluar-masuk siswa berbasis QR Code untuk sekolah.',

@@ -13,6 +13,7 @@ export enum PermissionStatus {
   PENDING = "pending",
   APPROVED_WALI = "approved_wali",
   APPROVED_PIKET = "approved_piket",
+  EXPIRED = "expired",
   REJECTED = "rejected",
   COMPLETED = "completed",
 }
@@ -57,9 +58,13 @@ export interface Permission {
   kelas: string;
   reason: string;
   departureTime: string;
-  estimatedReturnTime: string;
+  estimatedReturnTime: string | null;
   actualReturnTime?: string;
   status: PermissionStatus;
+  rawStatus?: string;
+  expiresAt?: string | null;
+  isExpired?: boolean;
+  willNotReturn?: boolean;
   createdAt: string;
   approvedByWaliId?: string;
   approvedByWaliName?: string;
@@ -69,6 +74,7 @@ export interface Permission {
   nomorPolisi?: string;
   qrCode?: string;
   suratUrl?: string;
+  type?: "keluar_masuk" | "pulang_tidak_kembali";
   category?: "sakit" | "keperluan" | "dispensasi" | "lainnya";
   comments?: Comment[];
   auditLog?: AuditLogEntry[];
@@ -130,6 +136,11 @@ export const STATUS_CONFIG: Record<
     label: "Izin Aktif",
     color: "text-emerald-700",
     bg: "bg-emerald-100",
+  },
+  [PermissionStatus.EXPIRED]: {
+    label: "Izin Expired",
+    color: "text-orange-700",
+    bg: "bg-orange-100",
   },
   [PermissionStatus.REJECTED]: {
     label: "Ditolak",

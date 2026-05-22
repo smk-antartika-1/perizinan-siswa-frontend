@@ -7,12 +7,14 @@ import PermissionTable from '@/components/permissions/PermissionTable';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
 import { PermissionStatus, UserRole } from '@/lib/types';
+import { getDisplayStatus } from '@/lib/utils';
 
 const STATUS_FILTERS = [
   { label: 'Semua', value: 'all' },
   { label: 'Menunggu', value: PermissionStatus.PENDING },
   { label: 'Disetujui Wali', value: PermissionStatus.APPROVED_WALI },
   { label: 'Izin Aktif', value: PermissionStatus.APPROVED_PIKET },
+  { label: 'Izin Expired', value: PermissionStatus.EXPIRED },
   { label: 'Selesai', value: PermissionStatus.COMPLETED },
   { label: 'Ditolak', value: PermissionStatus.REJECTED },
 ];
@@ -24,7 +26,7 @@ export default function HistoryPage() {
 
   const filtered = statusFilter === 'all'
     ? myPermissions
-    : myPermissions.filter(p => p.status === statusFilter);
+    : myPermissions.filter(p => getDisplayStatus(p) === statusFilter);
 
   const isGrouped = currentUser?.role !== UserRole.SISWA;
 
@@ -58,7 +60,7 @@ export default function HistoryPage() {
             }`}>
               {f.value === 'all'
                 ? myPermissions.length
-                : myPermissions.filter(p => p.status === f.value).length}
+                : myPermissions.filter(p => getDisplayStatus(p) === f.value).length}
             </span>
           </button>
         ))}

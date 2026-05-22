@@ -4,6 +4,7 @@ import { apiRequest } from "@/lib/api";
 import { useAppContext } from "@/context/AppContext";
 import { useAuth } from "./useAuth";
 import { PermissionStatus, UserRole } from "@/lib/types";
+import { getDisplayStatus } from "@/lib/utils";
 
 export function usePermissions() {
   const {
@@ -104,7 +105,7 @@ export function usePermissions() {
 
   const activePermission = permissions.find(
     (p) =>
-      p.status === PermissionStatus.APPROVED_PIKET &&
+      getDisplayStatus(p) === PermissionStatus.APPROVED_PIKET &&
       p.studentId === currentUser?.id,
   );
 

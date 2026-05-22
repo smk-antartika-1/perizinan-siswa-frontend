@@ -1,5 +1,41 @@
 import { Permission, PermissionStatus } from "./types";
 
+export function getPermissionExpiry(permission: Permission): Date | null {
+  if (permission.category === "sakit") return null;
+  if (permission.expiresAt) {
+    const explicit = new Date(permission.expiresAt);
+    if (!Number.isNaN(explicit.valueOf())) return explicit;
+  }
+
+  const estimated = permission.estimatedReturnTime
+    ? new Date(permission.estimatedReturnTime)
+    : null;
+  if (estimated && !Number.isNaN(estimated.valueOf())) return estimated;
+
+  const departure = permission.departureTime
+    ? new Date(permission.departureTime)
+    : null;
+  if (!departure || Number.isNaN(departure.valueOf())) return null;
+
+  const endOfDay = new Date(departure);
+  endOfDay.setHours(23, 59, 59, 999);
+  return endOfDay;
+}
+
+export function isPermissionExpired(permission: Permission): boolean {
+  if (permission.isExpired === true) return true;
+  if (permission.status === PermissionStatus.EXPIRED) return true;
+  if (permission.status !== PermissionStatus.APPROVED_PIKET) return false;
+  const expiresAt = getPermissionExpiry(permission);
+  return Boolean(expiresAt && new Date() > expiresAt);
+}
+
+export function getDisplayStatus(permission: Permission): PermissionStatus {
+  return isPermissionExpired(permission)
+    ? PermissionStatus.EXPIRED
+    : permission.status;
+}
+
 export function formatDate(dateStr: string): string {
   return new Date(dateStr).toLocaleDateString("id-ID", {
     day: "numeric",
@@ -23,6 +59,24 @@ export function formatDateTime(dateStr: string): string {
     hour: "2-digit",
     minute: "2-digit",
   });
+}
+
+export function isNoReturnPermission(permission: Permission): boolean {
+  return (
+    permission.willNotReturn === true ||
+    permission.type === "pulang_tidak_kembali" ||
+    !permission.estimatedReturnTime
+  );
+}
+
+export function formatEstimatedReturn(permission: Permission): string {
+  if (isNoReturnPermission(permission)) return "Tidak Kembali";
+  return formatTime(permission.estimatedReturnTime!);
+}
+
+export function formatEstimatedReturnDateTime(permission: Permission): string {
+  if (isNoReturnPermission(permission)) return "Tidak Kembali";
+  return formatDateTime(permission.estimatedReturnTime!);
 }
 
 export function formatRelativeTime(dateStr: string): string {
@@ -64,13 +118,16 @@ export function getPermissionStats(permissions: Permission[]) {
     approvedPiket: permissions.filter(
       (p) => p.status === PermissionStatus.APPROVED_PIKET,
     ).length,
+    expired: permissions.filter(
+      (p) => getDisplayStatus(p) === PermissionStatus.EXPIRED,
+    ).length,
     rejected: permissions.filter((p) => p.status === PermissionStatus.REJECTED)
       .length,
     completed: permissions.filter(
       (p) => p.status === PermissionStatus.COMPLETED,
     ).length,
     active: permissions.filter(
-      (p) => p.status === PermissionStatus.APPROVED_PIKET,
+      (p) => getDisplayStatus(p) === PermissionStatus.APPROVED_PIKET,
     ).length,
   };
 }

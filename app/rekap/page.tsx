@@ -183,7 +183,7 @@ export default function RekapPage() {
                       <span className="text-slate-600 truncate flex-1 mr-2">
                         {p.studentName}
                       </span>
-                      <StatusBadge status={p.status} />
+                      <StatusBadge permission={p} />
                     </div>
                   ))}
                 </div>

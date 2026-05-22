@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { X, GraduationCap, ClipboardList, Clock, HeartPulse, ShieldAlert, Search, Calendar, ArrowUpRight } from 'lucide-react';
 import { useAppContext } from '@/context/AppContext';
 import { UserRole, PermissionStatus, STATUS_CONFIG } from '@/lib/types';
-import { formatDate, formatTime, getPermissionStats } from '@/lib/utils';
+import { formatDate, formatEstimatedReturn, formatTime, getDisplayStatus, getPermissionStats } from '@/lib/utils';
 import StatusBadge from '@/components/ui/StatusBadge';
 
 export default function StudentDetailModal() {
@@ -29,11 +29,13 @@ export default function StudentDetailModal() {
 
   const stats = getPermissionStats(studentPermissions);
   const sickCount = studentPermissions.filter(p => p.category === 'sakit').length;
-  const activeCount = studentPermissions.filter(p => p.status === PermissionStatus.APPROVED_PIKET).length;
+  const activeCount = studentPermissions.filter(
+    (p) => getDisplayStatus(p) === PermissionStatus.APPROVED_PIKET,
+  ).length;
 
   const filteredPermissions = studentPermissions.filter(p => {
-    const matchesSearch = p.reason.toLowerCase().includes(search.toLowerCase()) || p.id.toLowerCase().includes(search.toLowerCase());
-    const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
+    const matchesSearch = p.reason.toLowerCase().includes(search.toLowerCase());
+    const matchesStatus = statusFilter === 'all' || getDisplayStatus(p) === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
@@ -152,7 +154,7 @@ export default function StudentDetailModal() {
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={14} />
                   <input
                     type="text"
-                    placeholder="Cari alasan atau ID..."
+                    placeholder="Cari alasan..."
                     value={search}
                     onChange={e => setSearch(e.target.value)}
                     className="w-full pl-8 pr-3 py-1.5 rounded-xl border border-slate-200 bg-slate-50 text-xs focus:bg-white outline-none"
@@ -167,6 +169,7 @@ export default function StudentDetailModal() {
                   <option value={PermissionStatus.PENDING}>Menunggu</option>
                   <option value={PermissionStatus.APPROVED_WALI}>Disetujui Wali</option>
                   <option value={PermissionStatus.APPROVED_PIKET}>Izin Aktif</option>
+                  <option value={PermissionStatus.EXPIRED}>Izin Expired</option>
                   <option value={PermissionStatus.COMPLETED}>Selesai</option>
                   <option value={PermissionStatus.REJECTED}>Ditolak</option>
                 </select>
@@ -177,7 +180,7 @@ export default function StudentDetailModal() {
               <table className="w-full text-left">
                 <thead className="bg-slate-50 border-b border-slate-100">
                   <tr>
-                    {['ID', 'Kategori', 'Alasan', 'Waktu Berangkat / Estimasi', 'Status', ''].map(h => (
+                    {['Kategori', 'Alasan', 'Waktu Berangkat / Estimasi', 'Status', ''].map(h => (
                       <th key={h} className="px-5 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{h}</th>
                     ))}
                   </tr>
@@ -190,7 +193,6 @@ export default function StudentDetailModal() {
                         onClick={() => handleNavigateToPermission(p.id)}
                         className="hover:bg-slate-50/75 transition-colors cursor-pointer group"
                       >
-                        <td className="px-5 py-3.5 font-mono text-xs font-semibold text-blue-600">{p.id}</td>
                         <td className="px-5 py-3.5 whitespace-nowrap">
                           <span className={`px-2 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-wider ${
                             p.category === 'sakit' ? 'bg-amber-50 border border-amber-100 text-amber-700' :
@@ -206,10 +208,10 @@ export default function StudentDetailModal() {
                         </td>
                         <td className="px-5 py-3.5 text-xs text-slate-500 whitespace-nowrap">
                           <div className="flex items-center gap-1"><Calendar size={11} /> {formatDate(p.createdAt)}</div>
-                          <div className="text-[10px] text-slate-400 mt-0.5">{formatTime(p.departureTime)} – {formatTime(p.estimatedReturnTime)}</div>
+                          <div className="text-[10px] text-slate-400 mt-0.5">{formatTime(p.departureTime)} – {formatEstimatedReturn(p)}</div>
                         </td>
                         <td className="px-5 py-3.5">
-                          <StatusBadge status={p.status} />
+                          <StatusBadge permission={p} />
                         </td>
                         <td className="px-5 py-3.5 text-right">
                           <button 
@@ -223,7 +225,7 @@ export default function StudentDetailModal() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan={6} className="px-5 py-12 text-center text-slate-400 text-xs">
+                      <td colSpan={5} className="px-5 py-12 text-center text-slate-400 text-xs">
                         Tidak ada riwayat perizinan ditemukan
                       </td>
                     </tr>

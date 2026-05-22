@@ -12,26 +12,20 @@ export class ApiError extends Error {
 
 type RequestOptions = RequestInit & { skipAuth?: boolean };
 
-export const tokenStore = {
-  get accessToken() {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('accessToken');
-  },
-  get refreshToken() {
-    if (typeof window === 'undefined') return null;
-    return localStorage.getItem('refreshToken');
-  },
-  set(accessToken: string, refreshToken: string) {
-    if (typeof window === 'undefined') return;
-    localStorage.setItem('accessToken', accessToken);
-    localStorage.setItem('refreshToken', refreshToken);
-  },
-  clear() {
-    if (typeof window === 'undefined') return;
-    localStorage.removeItem('accessToken');
-    localStorage.removeItem('refreshToken');
-  },
-};
+function buildRequestOptions(options: RequestOptions) {
+  const headers = new Headers(options.headers);
+  const isFormData = options.body instanceof FormData;
+
+  if (!isFormData && !headers.has('Content-Type') && options.body) {
+    headers.set('Content-Type', 'application/json');
+  }
+
+  return {
+    ...options,
+    headers,
+    credentials: 'include' as RequestCredentials,
+  };
+}
 
 async function parseResponse<T>(res: Response): Promise<T> {
   const contentType = res.headers.get('content-type') || '';
@@ -53,27 +47,29 @@ async function parseResponse<T>(res: Response): Promise<T> {
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
-  const headers = new Headers(options.headers);
-  const isFormData = options.body instanceof FormData;
+  const requestOptions = buildRequestOptions(options);
+  let res = await fetch(`${API_BASE_URL}${path}`, requestOptions);
 
-  if (!isFormData && !headers.has('Content-Type') && options.body) {
-    headers.set('Content-Type', 'application/json');
+  if (res.status === 401 && !options.skipAuth && path !== '/api/v1/auth/refresh') {
+    const refreshRes = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+
+    if (refreshRes.ok) {
+      res = await fetch(`${API_BASE_URL}${path}`, requestOptions);
+    }
   }
 
-  if (!options.skipAuth) {
-    const token = tokenStore.accessToken;
-    if (token) headers.set('Authorization', `Bearer ${token}`);
-  }
-
-  const res = await fetch(`${API_BASE_URL}${path}`, { ...options, headers });
   return parseResponse<T>(res);
 }
 
 export async function apiDownload(path: string): Promise<Response> {
   const headers = new Headers();
-  const token = tokenStore.accessToken;
-  if (token) headers.set('Authorization', `Bearer ${token}`);
-  const res = await fetch(`${API_BASE_URL}${path}`, { headers });
+  const res = await fetch(`${API_BASE_URL}${path}`, {
+    headers,
+    credentials: 'include',
+  });
   if (!res.ok) throw new ApiError(`Download failed (${res.status})`, res.status);
   return res;
 }

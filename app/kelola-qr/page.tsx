@@ -1,23 +1,21 @@
 'use client';
 
 import { useState, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { 
   QrCode, Search, Printer, CheckCircle, RefreshCw, 
-  ExternalLink, Calendar, Clock, AlertTriangle, ShieldCheck, UserCheck 
+  Calendar, Clock, AlertTriangle, ShieldCheck, UserCheck 
 } from 'lucide-react';
 import { QRCodeSVG } from 'qrcode.react';
 import AppShell from '@/components/layout/AppShell';
 import { useAppContext } from '@/context/AppContext';
 import { PermissionStatus, UserRole } from '@/lib/types';
-import { formatDate, formatTime, formatDateTime, generateQRValue } from '@/lib/utils';
+import { formatDate, formatTime, formatDateTime, formatEstimatedReturn, formatEstimatedReturnDateTime, generateQRValue, getDisplayStatus } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import StatusBadge from '@/components/ui/StatusBadge';
 
 export default function KelolaQRPage() {
   const { canAccess } = useAuth();
   const { permissions, updatePermission, viewStudent, users, showToast } = useAppContext();
-  const router = useRouter();
 
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
@@ -37,23 +35,31 @@ export default function KelolaQRPage() {
   }
 
   // Filter permissions that have been approved by Piket (meaning QR is active or completed)
-  const qrPermissions = permissions.filter(p => 
-    p.status === PermissionStatus.APPROVED_PIKET || p.status === PermissionStatus.COMPLETED
-  );
+  const qrPermissions = permissions.filter(p => {
+    const status = getDisplayStatus(p);
+    return (
+      status === PermissionStatus.APPROVED_PIKET ||
+      status === PermissionStatus.COMPLETED ||
+      status === PermissionStatus.EXPIRED
+    );
+  });
 
   const filteredPermissions = qrPermissions.filter(p => {
     const matchesSearch = 
       p.studentName.toLowerCase().includes(searchQuery.toLowerCase()) || 
-      p.id.toLowerCase().includes(searchQuery.toLowerCase()) || 
       p.kelas.toLowerCase().includes(searchQuery.toLowerCase());
     
-    const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || getDisplayStatus(p) === statusFilter;
     
     return matchesSearch && matchesStatus;
   });
 
-  const activeQRCount = qrPermissions.filter(p => p.status === PermissionStatus.APPROVED_PIKET).length;
-  const completedCount = qrPermissions.filter(p => p.status === PermissionStatus.COMPLETED).length;
+  const activeQRCount = qrPermissions.filter(
+    (p) => getDisplayStatus(p) === PermissionStatus.APPROVED_PIKET,
+  ).length;
+  const completedCount = qrPermissions.filter(
+    (p) => getDisplayStatus(p) === PermissionStatus.COMPLETED,
+  ).length;
 
   const handleToggleReturn = (perm: typeof permissions[0]) => {
     const nowStr = new Date().toISOString();
@@ -110,7 +116,7 @@ export default function KelolaQRPage() {
         doc.write(`
           <html>
             <head>
-              <title>Cetak QR - ${perm.id}</title>
+              <title>Cetak QR - ${perm.studentName}</title>
               <style>
                 body {
                   font-family: 'Courier New', Courier, monospace;
@@ -164,7 +170,7 @@ export default function KelolaQRPage() {
                   SMK ANTARTIKA 1 SIDOARJO<br/>
                   <span style="font-size:9px;">OPERASIONAL GURU PIKET</span>
                 </div>
-                <div class="title">TICKET ID: ${perm.id}</div>
+                <div class="title">TIKET PERIZINAN</div>
                 <div class="qr-box">
                   ${qrHTML}
                 </div>
@@ -173,7 +179,7 @@ export default function KelolaQRPage() {
                   <strong>Kelas:</strong> ${perm.kelas}<br/>
                   <strong>Alasan:</strong> "${perm.reason}"<br/>
                   <strong>Berangkat:</strong> ${formatDateTime(perm.departureTime)}<br/>
-                  <strong>Est. Kembali:</strong> ${perm.category === 'sakit' ? 'Selesai KBM (Bebas)' : formatDateTime(perm.estimatedReturnTime)}<br/>
+                  <strong>Est. Kembali:</strong> ${formatEstimatedReturnDateTime(perm)}<br/>
                   ${perm.nomorPolisi ? `<strong>No. Polisi:</strong> ${perm.nomorPolisi}<br/>` : ''}
                 </div>
                 <div class="footer">
@@ -260,7 +266,7 @@ export default function KelolaQRPage() {
             <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
             <input
               type="text"
-              placeholder="Cari nama, kelas, atau ID tiket..."
+              placeholder="Cari nama atau kelas..."
               value={searchQuery}
               onChange={e => setSearchQuery(e.target.value)}
               className="w-full pl-10 pr-4 py-2 text-xs rounded-xl border border-slate-200 bg-white focus:outline-none focus:ring-2 focus:ring-blue-500/10 focus:border-blue-500 transition-all font-medium"
@@ -276,6 +282,7 @@ export default function KelolaQRPage() {
             >
               <option value="all">Semua QR</option>
               <option value={PermissionStatus.APPROVED_PIKET}>Izin Aktif (Siswa Di luar)</option>
+              <option value={PermissionStatus.EXPIRED}>Izin Expired</option>
               <option value={PermissionStatus.COMPLETED}>Sudah Kembali</option>
             </select>
           </div>
@@ -286,7 +293,7 @@ export default function KelolaQRPage() {
           <table className="w-full text-left">
             <thead className="bg-slate-50 border-b border-slate-100">
               <tr>
-                {['ID Tiket', 'Siswa', 'Kategori', 'Jam Keluar / Estimasi', 'No. Polisi', 'Status QR', 'Aksi Operasional'].map((h, i) => (
+                {['Siswa', 'Kategori', 'Jam Keluar / Estimasi', 'No. Polisi', 'Status QR', 'Aksi Operasional'].map((h, i) => (
                   <th key={i} className="px-6 py-4 text-[10px] font-bold text-slate-400 uppercase tracking-widest">{h}</th>
                 ))}
               </tr>
@@ -295,20 +302,6 @@ export default function KelolaQRPage() {
               {filteredPermissions.length > 0 ? (
                 filteredPermissions.map(p => (
                   <tr key={p.id} className="hover:bg-slate-50/50 transition-colors group">
-                    {/* Ticket ID */}
-                    <td className="px-6 py-4">
-                      <div className="flex items-center gap-1.5">
-                        <span className="font-mono text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-lg">{p.id}</span>
-                        <button
-                          onClick={() => router.push(`/izin/${p.id}`)}
-                          className="p-1 rounded bg-slate-100 text-slate-400 hover:bg-blue-100 hover:text-blue-600 transition-colors"
-                          title="Buka Lembar Persetujuan"
-                        >
-                          <ExternalLink size={12} />
-                        </button>
-                      </div>
-                    </td>
-
                     {/* Student Metadata */}
                     <td className="px-6 py-4">
                       <div>
@@ -340,7 +333,7 @@ export default function KelolaQRPage() {
                         <Clock size={11} className="text-slate-400" />
                         <span>{formatTime(p.departureTime)}</span>
                         <span className="text-slate-300 mx-0.5">—</span>
-                        <span>{p.category === 'sakit' ? 'Selesai KBM' : formatTime(p.estimatedReturnTime)}</span>
+                        <span>{formatEstimatedReturn(p)}</span>
                       </div>
                       <div className="flex items-center gap-1 text-[9px] text-slate-400 mt-0.5">
                         <Calendar size={9} />
@@ -361,7 +354,7 @@ export default function KelolaQRPage() {
 
                     {/* Status Badge */}
                     <td className="px-6 py-4">
-                      <StatusBadge status={p.status} />
+                      <StatusBadge permission={p} />
                     </td>
 
                     {/* Actions Panel */}

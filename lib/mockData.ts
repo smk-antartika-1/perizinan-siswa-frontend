@@ -4,15 +4,15 @@ import { UserRole, PermissionStatus, User, Permission, Student, Notification } f
 // MOCK USERS
 // ============================================================
 export const MOCK_USERS: User[] = [
-  { id: 'u1', name: 'Budi Santoso', role: UserRole.SISWA, email: 'budi@sekolah.id', username: '2024001', password: '2024001', nis: '2024001', kelas: 'XII IPA 1' },
-  { id: 'u2', name: 'Siti Rahayu', role: UserRole.SISWA, email: 'siti@sekolah.id', username: '2024002', password: '2024002', nis: '2024002', kelas: 'XII IPA 1' },
-  { id: 'u3', name: 'Ahmad Fauzi', role: UserRole.SISWA, email: 'ahmad@sekolah.id', username: '2024005', password: '2024005', nis: '2024005', kelas: 'XII IPS 2' },
-  { id: 'u4', name: 'Dewi Kartika', role: UserRole.SISWA, email: 'dewi@sekolah.id', username: '2024007', password: '2024007', nis: '2024007', kelas: 'XI IPA 3' },
-  { id: 'u5', name: 'Ibu Ratna Sari', role: UserRole.WALI_KELAS, email: 'ratna@sekolah.id', username: 'walikelas1', password: 'password', kelas: 'XII IPA 1', nip: 'NIP-001' },
-  { id: 'u6', name: 'Bapak Hendro', role: UserRole.WALI_KELAS, email: 'hendro@sekolah.id', username: 'walikelas2', password: 'password', kelas: 'XII IPS 2', nip: 'NIP-002' },
-  { id: 'u7', name: 'Pak Andi Wijaya', role: UserRole.GURU_PIKET, email: 'andi@sekolah.id', username: 'piket', password: 'password', nip: 'NIP-003' },
-  { id: 'u8', name: 'Pak Slamet', role: UserRole.SECURITY, email: 'slamet@sekolah.id', username: 'security', password: 'password' },
-  { id: 'u9', name: 'Admin IT', role: UserRole.ADMIN, email: 'admin@sekolah.id', username: 'admin', password: 'password', nip: 'NIP-ADM' },
+  { id: 'u1', name: 'Budi Santoso', role: UserRole.SISWA, email: 'budi@sekolah.id', username: '2024001', nis: '2024001', kelas: 'XII IPA 1' },
+  { id: 'u2', name: 'Siti Rahayu', role: UserRole.SISWA, email: 'siti@sekolah.id', username: '2024002', nis: '2024002', kelas: 'XII IPA 1' },
+  { id: 'u3', name: 'Ahmad Fauzi', role: UserRole.SISWA, email: 'ahmad@sekolah.id', username: '2024005', nis: '2024005', kelas: 'XII IPS 2' },
+  { id: 'u4', name: 'Dewi Kartika', role: UserRole.SISWA, email: 'dewi@sekolah.id', username: '2024007', nis: '2024007', kelas: 'XI IPA 3' },
+  { id: 'u5', name: 'Ibu Ratna Sari', role: UserRole.WALI_KELAS, email: 'ratna@sekolah.id', username: 'walikelas1', kelas: 'XII IPA 1', nip: 'NIP-001' },
+  { id: 'u6', name: 'Bapak Hendro', role: UserRole.WALI_KELAS, email: 'hendro@sekolah.id', username: 'walikelas2', kelas: 'XII IPS 2', nip: 'NIP-002' },
+  { id: 'u7', name: 'Pak Andi Wijaya', role: UserRole.GURU_PIKET, email: 'andi@sekolah.id', username: 'piket', nip: 'NIP-003' },
+  { id: 'u8', name: 'Pak Slamet', role: UserRole.SECURITY, email: 'slamet@sekolah.id', username: 'security' },
+  { id: 'u9', name: 'Admin IT', role: UserRole.ADMIN, email: 'admin@sekolah.id', username: 'admin', nip: 'NIP-ADM' },
 ];
 
 // ============================================================

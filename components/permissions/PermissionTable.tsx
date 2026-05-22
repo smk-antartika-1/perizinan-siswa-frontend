@@ -8,7 +8,7 @@ import {
   Clock, ShieldCheck, ArrowRightLeft, SquareCheck, Info
 } from 'lucide-react';
 import { Permission, PermissionStatus, UserRole, STATUS_CONFIG } from '@/lib/types';
-import { formatTime, formatDate } from '@/lib/utils';
+import { formatEstimatedReturn, formatTime, formatDate, getDisplayStatus } from '@/lib/utils';
 import { useAppContext } from '@/context/AppContext';
 import StatusBadge from '@/components/ui/StatusBadge';
 
@@ -29,14 +29,13 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
   const [endDate, setEndDate] = useState('');
 
   // Sorting States
-  const [sortColumn, setSortColumn] = useState<'id' | 'studentName' | 'departureTime'>('departureTime');
+  const [sortColumn, setSortColumn] = useState<'studentName' | 'departureTime'>('departureTime');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
 
   // Column Visibility States
   const [showFilters, setShowFilters] = useState(false);
   const [showVisibilityDropdown, setShowVisibilityDropdown] = useState(false);
   const [columnVisibility, setColumnVisibility] = useState<Record<string, boolean>>({
-    id: true,
     studentName: true,
     category: true,
     reason: true,
@@ -55,6 +54,11 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
 
   // Loading Simulation States
   const [isTableLoading, setIsTableLoading] = useState(false);
+  const canManageReturn =
+    currentUser?.role === UserRole.GURU_PIKET ||
+    currentUser?.role === UserRole.SECURITY ||
+    currentUser?.role === UserRole.WALI_KELAS ||
+    currentUser?.role === UserRole.ADMIN;
 
   // Reset pagination on filter change
   useEffect(() => {
@@ -74,14 +78,13 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
     const matchesSearch = 
       p.studentName.toLowerCase().includes(search.toLowerCase()) ||
       p.kelas.toLowerCase().includes(search.toLowerCase()) ||
-      p.id.toLowerCase().includes(search.toLowerCase()) ||
       p.reason.toLowerCase().includes(search.toLowerCase());
 
     // 2. Category Filter
     const matchesCategory = categoryFilter === 'all' || p.category === categoryFilter;
 
     // 3. Status Filter
-    const matchesStatus = statusFilter === 'all' || p.status === statusFilter;
+    const matchesStatus = statusFilter === 'all' || getDisplayStatus(p) === statusFilter;
 
     // 4. Date Range Filters
     const departureDateStr = p.departureTime.split('T')[0];
@@ -94,9 +97,7 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
   // Sort permission data
   const sorted = [...filtered].sort((a, b) => {
     let comparison = 0;
-    if (sortColumn === 'id') {
-      comparison = a.id.localeCompare(b.id);
-    } else if (sortColumn === 'studentName') {
+    if (sortColumn === 'studentName') {
       comparison = a.studentName.localeCompare(b.studentName);
     } else if (sortColumn === 'departureTime') {
       comparison = new Date(a.departureTime).getTime() - new Date(b.departureTime).getTime();
@@ -110,7 +111,7 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
   const totalPages = Math.ceil(sorted.length / pageSize) || 1;
 
   // Toggle sort order
-  const handleSort = (column: 'id' | 'studentName' | 'departureTime') => {
+  const handleSort = (column: 'studentName' | 'departureTime') => {
     if (sortColumn === column) {
       setSortDirection(prev => (prev === 'asc' ? 'desc' : 'asc'));
     } else {
@@ -212,7 +213,7 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
   };
 
   // Render Table Header column with sorting triggers
-  const renderSortableHeader = (colId: 'id' | 'studentName' | 'departureTime', label: string) => {
+  const renderSortableHeader = (colId: 'studentName' | 'departureTime', label: string) => {
     const isActive = sortColumn === colId;
     return (
       <button
@@ -231,23 +232,20 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
 
   // Render Single Permission Row
   const renderRow = (p: Permission) => {
+    const displayStatus = getDisplayStatus(p);
     const isCompleted = p.status === PermissionStatus.COMPLETED;
-    const isApprovedPiket = p.status === PermissionStatus.APPROVED_PIKET;
+    const isApprovedPiket =
+      displayStatus === PermissionStatus.APPROVED_PIKET ||
+      displayStatus === PermissionStatus.EXPIRED;
     
     // Checked status is true if completed
     const isChecked = isCompleted;
 
-    // Disabled unless it is active (approved_piket) or already completed (completed)
-    const canToggle = isApprovedPiket || isCompleted;
+    // Only school staff can confirm or reopen student return status.
+    const canToggle = canManageReturn && (isApprovedPiket || isCompleted);
 
     return (
       <tr key={p.id} className="hover:bg-slate-50/60 transition-colors border-b border-slate-100 group">
-        {columnVisibility.id && (
-          <td className="px-4 py-3 font-mono text-xs font-semibold text-blue-600">
-            {p.id}
-          </td>
-        )}
-        
         {columnVisibility.studentName && (
           <td className="px-4 py-3">
             <div className="flex items-center gap-2.5">
@@ -288,14 +286,14 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
             <div className="flex items-center gap-1 font-medium"><Calendar size={11} className="text-slate-400" /> {formatDate(p.departureTime)}</div>
             <div className="text-[10px] text-slate-400 mt-0.5 flex items-center gap-1 font-mono">
               <Clock size={11} className="text-slate-350" />
-              {formatTime(p.departureTime)} – {p.category === 'sakit' ? 'Selesai KBM' : `${formatTime(p.estimatedReturnTime)}`}
+              {formatTime(p.departureTime)} – {formatEstimatedReturn(p)}
             </div>
           </td>
         )}
 
         {columnVisibility.status && (
           <td className="px-4 py-3">
-            <StatusBadge status={p.status} />
+            <StatusBadge permission={p} />
           </td>
         )}
 
@@ -318,7 +316,11 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
                 </span>
               </label>
             ) : (
-              <span className="text-[10px] font-medium text-slate-350 italic">Belum Diizinkan Keluar</span>
+              <span className="text-[10px] font-medium text-slate-350 italic">
+                {isApprovedPiket || isCompleted
+                  ? 'Dicatat oleh petugas'
+                  : 'Belum Diizinkan Keluar'}
+              </span>
             )}
           </td>
         )}
@@ -342,7 +344,6 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
     <>
       {[...Array(5)].map((_, i) => (
         <tr key={i} className="animate-pulse border-b border-slate-100">
-          {columnVisibility.id && <td className="px-4 py-4"><div className="h-3 bg-slate-100 rounded w-12" /></td>}
           {columnVisibility.studentName && (
             <td className="px-4 py-4">
               <div className="flex items-center gap-2">
@@ -420,7 +421,6 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 pb-1 border-b border-slate-100">Pilih Kolom Tampil</p>
                   
                   {([
-                    { key: 'id', label: 'ID Tiket' },
                     { key: 'studentName', label: 'Nama Siswa' },
                     { key: 'category', label: 'Kategori Keperluan' },
                     { key: 'reason', label: 'Alasan' },
@@ -478,6 +478,7 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
               <option value={PermissionStatus.PENDING}>Menunggu Wali Kelas</option>
               <option value={PermissionStatus.APPROVED_WALI}>Disetujui Wali Kelas</option>
               <option value={PermissionStatus.APPROVED_PIKET}>Disetujui Piket (Izin Aktif)</option>
+              <option value={PermissionStatus.EXPIRED}>Izin Expired</option>
               <option value={PermissionStatus.COMPLETED}>Selesai (Kembali)</option>
               <option value={PermissionStatus.REJECTED}>Ditolak / Batal</option>
             </select>
@@ -544,7 +545,6 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
                     <table className="w-full text-left border-collapse">
                       <thead>
                         <tr className="bg-slate-50/50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                          {columnVisibility.id && <th className="px-4 py-2 font-mono">ID</th>}
                           {columnVisibility.studentName && <th className="px-4 py-2">Siswa</th>}
                           {columnVisibility.category && <th className="px-4 py-2">Kategori</th>}
                           {columnVisibility.reason && <th className="px-4 py-2">Alasan</th>}
@@ -569,9 +569,6 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
             <table className="w-full text-left border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>
-                  {columnVisibility.id && (
-                    <th className="px-4 py-3.5">{renderSortableHeader('id', 'ID Izin')}</th>
-                  )}
                   {columnVisibility.studentName && (
                     <th className="px-4 py-3.5">{renderSortableHeader('studentName', 'Siswa')}</th>
                   )}

@@ -7,7 +7,7 @@ import React, {
   useCallback,
   useEffect,
 } from "react";
-import { apiDownload, apiRequest, tokenStore } from "@/lib/api";
+import { apiDownload, apiRequest } from "@/lib/api";
 import { User, Permission, Notification, UserRole } from "@/lib/types";
 
 interface Toast {
@@ -68,20 +68,12 @@ interface AppContextType {
 const AppContext = createContext<AppContextType | null>(null);
 
 function getStoredUser(): User | null {
-  if (typeof window === "undefined") return null;
-  const raw = localStorage.getItem("currentUser");
-  if (!raw) return null;
-  try {
-    return JSON.parse(raw) as User;
-  } catch {
-    return null;
-  }
+  return null;
 }
 
 function storeUser(user: User | null) {
   if (typeof window === "undefined") return;
-  if (user) localStorage.setItem("currentUser", JSON.stringify(user));
-  else localStorage.removeItem("currentUser");
+  localStorage.removeItem("currentUser");
 }
 
 function normalizeUser(raw: any): User {
@@ -188,7 +180,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const refreshData = useCallback(async () => {
-    if (!tokenStore.accessToken) return;
     const user = await loadProfile();
     await Promise.all([
       loadPermissions().catch(() => undefined),
@@ -208,28 +199,22 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   ]);
 
   useEffect(() => {
-    if (tokenStore.accessToken) {
-      refreshData().catch(() => {
-        tokenStore.clear();
-        storeUser(null);
-        setCurrentUser(null);
-      });
-    }
+    refreshData().catch(() => {
+      storeUser(null);
+      setCurrentUser(null);
+    });
   }, [refreshData]);
 
   const login = useCallback(
     async (username: string, password: string) => {
       try {
         const data = await apiRequest<{
-          accessToken: string;
-          refreshToken: string;
           user: User;
         }>("/api/v1/auth/login", {
           method: "POST",
           skipAuth: true,
           body: JSON.stringify({ username, password }),
         });
-        tokenStore.set(data.accessToken, data.refreshToken);
         const profile = await loadProfile().catch(() =>
           normalizeUser(data.user),
         );
@@ -238,7 +223,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await refreshData().catch(() => undefined);
         return true;
       } catch {
-        tokenStore.clear();
         storeUser(null);
         setCurrentUser(null);
         return false;
@@ -248,15 +232,10 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    const refreshToken = tokenStore.refreshToken;
-    if (refreshToken) {
-      await apiRequest("/api/v1/auth/logout", {
-        method: "POST",
-        skipAuth: true,
-        body: JSON.stringify({ refreshToken }),
-      }).catch(() => undefined);
-    }
-    tokenStore.clear();
+    await apiRequest("/api/v1/auth/logout", {
+      method: "POST",
+      skipAuth: true,
+    }).catch(() => undefined);
     storeUser(null);
     setCurrentUser(null);
     setUsers([]);
@@ -332,8 +311,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           reason: perm.reason,
           departureTime: perm.departureTime,
           estimatedReturnTime: perm.estimatedReturnTime,
-          type:
-            perm.category === "sakit" ? "pulang_tidak_kembali" : "keluar_masuk",
+          type: perm.willNotReturn ? "pulang_tidak_kembali" : "keluar_masuk",
           category: perm.category || "keperluan",
           nomorPolisi: perm.nomorPolisi || null,
         }),

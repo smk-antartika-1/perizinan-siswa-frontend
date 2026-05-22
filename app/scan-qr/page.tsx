@@ -27,7 +27,7 @@ export default function ScanQRPage() {
   }
 
   const handleScanned = (perm: Permission | null) => {
-    if (perm) showToast(`QR Valid: ${perm.studentName} (${perm.id})`, 'success');
+    if (perm) showToast(`QR Valid: ${perm.studentName}`, 'success');
     else showToast('QR Code tidak valid atau izin tidak aktif', 'error');
   };
 
@@ -79,7 +79,7 @@ export default function ScanQRPage() {
                     <p className="text-sm font-semibold text-slate-800">{p.studentName}</p>
                     <p className="text-xs text-slate-400">{p.kelas} · Kembali {formatDateTime(p.actualReturnTime!)}</p>
                   </div>
-                  <StatusBadge status={p.status} />
+                  <StatusBadge permission={p} />
                 </div>
               ))
             ) : (
