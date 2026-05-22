@@ -97,7 +97,7 @@ export default function RekapPage() {
             </p>
           </div>
           <button onClick={handleExport} className="btn-secondary">
-            <Download size={16} /> Export CSV
+            <Download size={16} /> Export XLSX
           </button>
         </div>
       </div>

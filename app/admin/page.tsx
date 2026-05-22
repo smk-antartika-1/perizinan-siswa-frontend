@@ -29,9 +29,8 @@ import {
 } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/hooks/useAuth";
-import { useAppContext } from "@/context/AppContext";
+import { useAppContext, type ImportPreviewRow } from "@/context/AppContext";
 import { UserRole, ROLE_LABELS, User } from "@/lib/types";
-import { MOCK_EXCEL_DATA } from "@/lib/mockData";
 
 type Tab = "import" | "users";
 type RoleFilter = "all" | UserRole;
@@ -105,6 +104,7 @@ export default function AdminPage() {
     updateUser,
     deleteUser,
     importUsers,
+    previewImportUsers,
     exportUsers,
     downloadImportTemplate,
     showToast,
@@ -134,6 +134,9 @@ export default function AdminPage() {
   const [isDragging, setIsDragging] = useState(false);
   const [importRole, setImportRole] = useState<UserRole>(UserRole.SISWA);
   const [isDownloadingTemplate, setIsDownloadingTemplate] = useState(false);
+  const [isPreviewLoading, setIsPreviewLoading] = useState(false);
+  const [previewRows, setPreviewRows] = useState<ImportPreviewRow[]>([]);
+  const [previewTotalRows, setPreviewTotalRows] = useState(0);
   const [selectedImportFile, setSelectedImportFile] = useState<File | null>(
     null,
   );
@@ -200,20 +203,38 @@ export default function AdminPage() {
   };
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) =>
     processFile(e.target.files?.[0]);
+
+  const loadImportPreview = async (role: UserRole, file: File) => {
+    setIsPreviewLoading(true);
+    try {
+      const preview = await previewImportUsers(role, file);
+      setPreviewRows(preview.rows);
+      setPreviewTotalRows(preview.totalRows);
+      showToast("Berkas dimuat. Pratinjau data di bawah ini.", "success");
+    } catch {
+      setPreviewRows([]);
+      setPreviewTotalRows(0);
+      setShowPreview(false);
+      setSelectedImportFile(null);
+      setFileName(null);
+      setFileSize(null);
+      showToast("Gagal membaca preview XLSX. Pastikan format sesuai template.", "error");
+    } finally {
+      setIsPreviewLoading(false);
+    }
+  };
+
   const processFile = (file: File | undefined) => {
     if (!file) return;
-    if (!file.name.match(/\.(xlsx|xls|csv)$/i)) {
-      showToast(
-        "Format file tidak valid. Gunakan .xlsx, .xls, atau .csv",
-        "error",
-      );
+    if (!file.name.match(/\.xlsx$/i)) {
+      showToast("Format file tidak valid. Gunakan .xlsx", "error");
       return;
     }
     setSelectedImportFile(file);
     setFileName(file.name);
     setFileSize((file.size / 1024).toFixed(1) + " KB");
     setShowPreview(true);
-    showToast("Berkas dimuat. Pratinjau data di bawah ini.", "success");
+    void loadImportPreview(importRole, file);
   };
 
   // Download per-role template from backend API
@@ -244,6 +265,8 @@ export default function AdminPage() {
         "success",
       );
       setSelectedImportFile(null);
+      setPreviewRows([]);
+      setPreviewTotalRows(0);
       setFileName(null);
       setFileSize(null);
       setShowPreview(false);
@@ -255,18 +278,18 @@ export default function AdminPage() {
   };
 
   // ──────────────────────────────────────────────
-  // Export CSV (scoped by role or all)
+  // Export XLSX (scoped by role or all)
   // ──────────────────────────────────────────────
-  const handleExportCSV = async (exportRole: RoleFilter = "all") => {
+  const handleExportXlsx = async (exportRole: RoleFilter = "all") => {
     try {
       await exportUsers(exportRole);
       const label =
         exportRole === "all"
           ? "Semua Pengguna"
           : ROLE_LABELS[exportRole as UserRole];
-      showToast(`CSV "${label}" berhasil diekspor.`, "success");
+      showToast(`XLSX "${label}" berhasil diekspor.`, "success");
     } catch {
-      showToast("Gagal mengekspor CSV.", "error");
+      showToast("Gagal mengekspor XLSX.", "error");
     } finally {
       setExportDropdownOpen(false);
     }
@@ -505,7 +528,7 @@ export default function AdminPage() {
                   onClick={() => setExportDropdownOpen((p) => !p)}
                   className="px-4 py-2.5 rounded-xl border border-slate-200 bg-white hover:border-blue-300 hover:text-blue-600 font-bold text-xs text-slate-600 transition-all flex items-center gap-1.5 shadow-sm"
                 >
-                  <Download size={14} /> Ekspor CSV{" "}
+                  <Download size={14} /> Ekspor XLSX{" "}
                   <ChevDown
                     size={12}
                     className={`transition-transform ${exportDropdownOpen ? "rotate-180" : ""}`}
@@ -519,7 +542,7 @@ export default function AdminPage() {
                       </p>
                     </div>
                     <button
-                      onClick={() => handleExportCSV("all")}
+                      onClick={() => handleExportXlsx("all")}
                       className="w-full text-left px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                     >
                       <span className="w-2 h-2 rounded-full bg-slate-500 flex-shrink-0" />
@@ -528,7 +551,7 @@ export default function AdminPage() {
                     {Object.values(UserRole).map((r) => (
                       <button
                         key={r}
-                        onClick={() => handleExportCSV(r)}
+                        onClick={() => handleExportXlsx(r)}
                         className="w-full text-left px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                       >
                         <span
@@ -597,8 +620,8 @@ export default function AdminPage() {
                   Import Excel Data Pengguna
                 </h3>
                 <p className="text-xs text-slate-400 font-medium">
-                  Unggah data pengguna dalam format .xlsx / .xls / .csv untuk
-                  diimpor secara massal.
+                  Unggah data pengguna dalam format .xlsx untuk diimpor secara
+                  massal.
                 </p>
               </div>
             </div>
@@ -615,7 +638,7 @@ export default function AdminPage() {
                   onClick={() => downloadTemplate(importRole)}
                   disabled={isDownloadingTemplate}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border border-emerald-300 bg-emerald-50 text-emerald-700 hover:bg-emerald-100 hover:border-emerald-400 transition-all disabled:opacity-60 disabled:cursor-not-allowed shadow-sm"
-                  title={`Unduh template CSV untuk peran ${ROLE_LABELS[importRole]}`}
+                  title={`Unduh template XLSX untuk peran ${ROLE_LABELS[importRole]}`}
                 >
                   {isDownloadingTemplate ? (
                     <>
@@ -635,7 +658,12 @@ export default function AdminPage() {
                 {Object.values(UserRole).map((r) => (
                   <button
                     key={r}
-                    onClick={() => setImportRole(r)}
+                    onClick={() => {
+                      setImportRole(r);
+                      if (selectedImportFile) {
+                        void loadImportPreview(r, selectedImportFile);
+                      }
+                    }}
                     className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                       importRole === r
                         ? `${ROLE_BADGE_COLORS[r]} border-current shadow-sm scale-105`
@@ -657,7 +685,7 @@ export default function AdminPage() {
                   {ROLE_LABELS[importRole]}
                 </strong>
                 <span className="mx-1.5 text-slate-300">·</span>
-                Template CSV berisi kolom yang sesuai dengan peran ini.
+                Template XLSX berisi kolom yang sesuai dengan peran ini.
               </p>
             </div>
 
@@ -695,7 +723,7 @@ export default function AdminPage() {
                     Atau klik untuk menjelajahi folder komputer Anda
                   </p>
                   <p className="text-[10px] text-slate-350 mt-4 uppercase tracking-widest font-bold">
-                    Mendukung: .xlsx, .xls, .csv
+                    Mendukung: .xlsx
                   </p>
                 </div>
               )}
@@ -703,7 +731,7 @@ export default function AdminPage() {
             <input
               ref={fileInputRef}
               type="file"
-              accept=".xlsx,.xls,.csv"
+              accept=".xlsx"
               onChange={handleFileUpload}
               className="hidden"
             />
@@ -720,16 +748,22 @@ export default function AdminPage() {
                       Preview Lembar Kerja Excel
                     </h3>
                     <p className="text-[10px] text-slate-400 font-semibold">
-                      {MOCK_EXCEL_DATA.length} baris · akan diimpor sebagai{" "}
+                      {previewTotalRows} baris · akan diimpor sebagai{" "}
                       <strong>{ROLE_LABELS[importRole]}</strong>
                     </p>
                   </div>
                 </div>
                 <button
                   onClick={handleImport}
+                  disabled={isPreviewLoading || previewTotalRows === 0}
                   className="btn-primary py-2 px-4 bg-emerald-600 hover:bg-emerald-700 shadow-md shadow-emerald-500/10 text-white font-bold text-xs inline-flex items-center gap-1.5"
                 >
-                  <Check size={14} className="stroke-[3px]" /> Import Sekarang
+                  {isPreviewLoading ? (
+                    <Loader2 size={14} className="animate-spin" />
+                  ) : (
+                    <Check size={14} className="stroke-[3px]" />
+                  )}{" "}
+                  Import Sekarang
                 </button>
               </div>
               <div className="overflow-x-auto">
@@ -744,7 +778,27 @@ export default function AdminPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-50">
-                    {MOCK_EXCEL_DATA.map((row) => (
+                    {isPreviewLoading && (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-5 py-8 text-center text-xs font-semibold text-slate-400"
+                        >
+                          Membaca isi file XLSX...
+                        </td>
+                      </tr>
+                    )}
+                    {!isPreviewLoading && previewRows.length === 0 && (
+                      <tr>
+                        <td
+                          colSpan={5}
+                          className="px-5 py-8 text-center text-xs font-semibold text-slate-400"
+                        >
+                          Tidak ada data yang dapat dipreview.
+                        </td>
+                      </tr>
+                    )}
+                    {!isPreviewLoading && previewRows.map((row) => (
                       <tr
                         key={row.no}
                         className="hover:bg-slate-50/30 transition-colors"
@@ -756,7 +810,7 @@ export default function AdminPage() {
                           {row.nama}
                         </td>
                         <td className="px-5 py-3 text-xs font-mono font-bold text-blue-600">
-                          {row.nis}
+                          {row.identifier}
                         </td>
                         <td className="px-5 py-3 text-xs font-semibold text-slate-600">
                           {row.kelas}

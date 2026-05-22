@@ -16,6 +16,19 @@ interface Toast {
   type: "success" | "error" | "info";
 }
 
+export interface ImportPreviewRow {
+  no: number;
+  nama: string;
+  identifier: string;
+  kelas: string;
+  email: string;
+}
+
+export interface ImportPreviewResult {
+  totalRows: number;
+  rows: ImportPreviewRow[];
+}
+
 interface AppContextType {
   currentUser: User | null;
   users: User[];
@@ -37,6 +50,10 @@ interface AppContextType {
     role: UserRole,
     file: File,
   ) => Promise<{ inserted: number; skipped: number }>;
+  previewImportUsers: (
+    role: UserRole,
+    file: File,
+  ) => Promise<ImportPreviewResult>;
   exportUsers: (role?: string) => Promise<void>;
   downloadImportTemplate: (role: UserRole) => Promise<void>;
 
@@ -285,18 +302,30 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     [loadAdminUsers],
   );
 
+  const previewImportUsers = useCallback(async (role: UserRole, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return apiRequest<ImportPreviewResult>(
+      `/api/v1/admin/users/import-preview.xlsx?role=${role}`,
+      {
+        method: "POST",
+        body: form,
+      },
+    );
+  }, []);
+
   const exportUsers = useCallback(async (role = "all") => {
     const res = await apiDownload(
-      `/api/v1/admin/users/export.csv?role=${role}`,
+      `/api/v1/admin/users/export.xlsx?role=${role}`,
     );
-    await downloadResponse(res, `pengguna_${role}.csv`);
+    await downloadResponse(res, `pengguna_${role}.xlsx`);
   }, []);
 
   const downloadImportTemplate = useCallback(async (role: UserRole) => {
     const res = await apiDownload(
-      `/api/v1/admin/import-template.csv?role=${role}`,
+      `/api/v1/admin/import-template.xlsx?role=${role}`,
     );
-    await downloadResponse(res, `template_${role}.csv`);
+    await downloadResponse(res, `template_${role}.xlsx`);
   }, []);
 
   const viewStudent = useCallback((nis: string | null) => {
@@ -444,6 +473,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         updateUser,
         deleteUser,
         importUsers,
+        previewImportUsers,
         exportUsers,
         downloadImportTemplate,
         activeStudentNis,
