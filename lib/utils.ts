@@ -1,7 +1,6 @@
 import { Permission, PermissionStatus } from "./types";
 
 export function getPermissionExpiry(permission: Permission): Date | null {
-  if (permission.category === "sakit") return null;
   if (permission.expiresAt) {
     const explicit = new Date(permission.expiresAt);
     if (!Number.isNaN(explicit.valueOf())) return explicit;

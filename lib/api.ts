@@ -46,6 +46,13 @@ async function parseResponse<T>(res: Response): Promise<T> {
   return res as T;
 }
 
+export async function clearAuthSession(): Promise<void> {
+  await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+    method: 'POST',
+    credentials: 'include',
+  }).catch(() => undefined);
+}
+
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const requestOptions = buildRequestOptions(options);
   let res = await fetch(`${API_BASE_URL}${path}`, requestOptions);

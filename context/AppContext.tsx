@@ -6,8 +6,9 @@ import React, {
   useState,
   useCallback,
   useEffect,
+  useRef,
 } from "react";
-import { apiDownload, apiRequest } from "@/lib/api";
+import { apiDownload, apiRequest, clearAuthSession } from "@/lib/api";
 import { User, Permission, Notification, UserRole } from "@/lib/types";
 
 interface Toast {
@@ -132,6 +133,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [activeStudentNis, setActiveStudentNis] = useState<string | null>(null);
+  const authEpochRef = useRef(0);
 
   const showToast = useCallback(
     (message: string, type: Toast["type"] = "success") => {
@@ -216,7 +218,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   ]);
 
   useEffect(() => {
+    const epoch = authEpochRef.current;
     refreshData().catch(() => {
+      if (authEpochRef.current !== epoch) return;
       storeUser(null);
       setCurrentUser(null);
     });
@@ -224,7 +228,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(
     async (username: string, password: string) => {
+      authEpochRef.current += 1;
       try {
+        await clearAuthSession();
         const data = await apiRequest<{
           user: User;
         }>("/api/v1/auth/login", {
@@ -237,6 +243,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         );
         setCurrentUser(profile);
         storeUser(profile);
+        authEpochRef.current += 1;
         await refreshData().catch(() => undefined);
         return true;
       } catch {
@@ -249,10 +256,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   );
 
   const logout = useCallback(async () => {
-    await apiRequest("/api/v1/auth/logout", {
-      method: "POST",
-      skipAuth: true,
-    }).catch(() => undefined);
+    authEpochRef.current += 1;
+    await clearAuthSession();
     storeUser(null);
     setCurrentUser(null);
     setUsers([]);
