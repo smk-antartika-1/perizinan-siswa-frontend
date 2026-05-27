@@ -9,7 +9,7 @@ import React, {
   useRef,
 } from "react";
 import { apiDownload, apiRequest, clearAuthSession } from "@/lib/api";
-import { User, Permission, Notification, UserRole } from "@/lib/types";
+import { User, Permission, Notification, UserRole, SchoolClass } from "@/lib/types";
 
 interface Toast {
   id: string;
@@ -22,12 +22,16 @@ export interface ImportPreviewRow {
   nama: string;
   identifier: string;
   kelas: string;
+  kelasStatus: "matched" | "missing" | "not_required";
+  classId: string | null;
   email: string;
 }
 
 export interface ImportPreviewResult {
   totalRows: number;
   rows: ImportPreviewRow[];
+  unknownClasses: string[];
+  summary: { matched: number; missing: number; notRequired: number };
 }
 
 interface AppContextType {
@@ -50,13 +54,19 @@ interface AppContextType {
   importUsers: (
     role: UserRole,
     file: File,
-  ) => Promise<{ inserted: number; skipped: number }>;
+  ) => Promise<{ inserted: number; skipped: number; skippedReasons?: { unknownClass: number } }>;
   previewImportUsers: (
     role: UserRole,
     file: File,
   ) => Promise<ImportPreviewResult>;
   exportUsers: (role?: string) => Promise<void>;
   downloadImportTemplate: (role: UserRole) => Promise<void>;
+
+  classes: SchoolClass[];
+  loadClasses: () => Promise<void>;
+  createClass: (name: string) => Promise<SchoolClass>;
+  updateClass: (id: string, name: string) => Promise<SchoolClass>;
+  deleteClass: (id: string) => Promise<void>;
 
   activeStudentNis: string | null;
   viewStudent: (nis: string | null) => void;
@@ -105,6 +115,7 @@ function normalizeUser(raw: any): User {
     nis: raw.nis || undefined,
     nip: raw.nip || undefined,
     kelas: raw.kelas || raw.className || raw.class_name || undefined,
+    classId: raw.classId || undefined,
     photoUrl: raw.avatarUrl || raw.avatar_url || undefined,
   };
 }
@@ -133,6 +144,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [activeStudentNis, setActiveStudentNis] = useState<string | null>(null);
+  const [classes, setClasses] = useState<SchoolClass[]>([]);
   const authEpochRef = useRef(0);
 
   const showToast = useCallback(
@@ -179,6 +191,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setUsers((data?.data || []).map(normalizeUser));
   }, []);
 
+  const loadClasses = useCallback(async () => {
+    const data = await apiRequest<SchoolClass[]>("/api/v1/classes");
+    setClasses(data || []);
+  }, []);
+
   const loadStudentsByClass = useCallback(async () => {
     const grouped = await apiRequest<
       Record<string, Array<{ id: string; name: string; nis: string }>>
@@ -204,13 +221,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadPermissions().catch(() => undefined),
       loadNotifications().catch(() => undefined),
       user.role === UserRole.ADMIN
-        ? loadAdminUsers().catch(() => undefined)
+        ? Promise.all([
+            loadAdminUsers().catch(() => undefined),
+            loadClasses().catch(() => undefined),
+          ])
         : user.role === UserRole.WALI_KELAS || user.role === UserRole.GURU_PIKET
           ? loadStudentsByClass().catch(() => undefined)
           : Promise.resolve(),
     ]);
   }, [
     loadAdminUsers,
+    loadClasses,
     loadNotifications,
     loadPermissions,
     loadProfile,
@@ -261,6 +282,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     storeUser(null);
     setCurrentUser(null);
     setUsers([]);
+    setClasses([]);
     setPermissions([]);
     setNotifications([]);
   }, []);
@@ -331,6 +353,31 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       `/api/v1/admin/import-template.xlsx?role=${role}`,
     );
     await downloadResponse(res, `template_${role}.xlsx`);
+  }, []);
+
+  const createClass = useCallback(async (name: string) => {
+    const created = await apiRequest<SchoolClass>("/api/v1/classes", {
+      method: "POST",
+      body: JSON.stringify({ name }),
+    });
+    setClasses((prev) => [...prev, created].sort((a, b) => a.name.localeCompare(b.name)));
+    return created;
+  }, []);
+
+  const updateClass = useCallback(async (id: string, name: string) => {
+    const updated = await apiRequest<SchoolClass>(`/api/v1/classes/${id}`, {
+      method: "PATCH",
+      body: JSON.stringify({ name }),
+    });
+    setClasses((prev) =>
+      prev.map((c) => (c.id === id ? { ...c, ...updated } : c)).sort((a, b) => a.name.localeCompare(b.name)),
+    );
+    return updated;
+  }, []);
+
+  const deleteClass = useCallback(async (id: string) => {
+    await apiRequest(`/api/v1/classes/${id}`, { method: "DELETE" });
+    setClasses((prev) => prev.filter((c) => c.id !== id));
   }, []);
 
   const viewStudent = useCallback((nis: string | null) => {
@@ -481,6 +528,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         previewImportUsers,
         exportUsers,
         downloadImportTemplate,
+        classes,
+        loadClasses,
+        createClass,
+        updateClass,
+        deleteClass,
         activeStudentNis,
         viewStudent,
         permissions,

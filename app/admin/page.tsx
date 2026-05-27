@@ -26,13 +26,14 @@ import {
   ChevronDown as ChevDown,
   FileDown,
   Loader2,
+  GraduationCap,
 } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppContext, type ImportPreviewRow } from "@/context/AppContext";
 import { UserRole, ROLE_LABELS, User } from "@/lib/types";
 
-type Tab = "import" | "users";
+type Tab = "import" | "users" | "classes";
 type RoleFilter = "all" | UserRole;
 
 const ROLE_FILTER_OPTIONS: {
@@ -107,6 +108,11 @@ export default function AdminPage() {
     previewImportUsers,
     exportUsers,
     downloadImportTemplate,
+    classes,
+    loadClasses,
+    createClass,
+    updateClass,
+    deleteClass,
     showToast,
   } = useAppContext();
 
@@ -116,6 +122,7 @@ export default function AdminPage() {
   // Search, Filter, Sort & Pagination
   const [searchQuery, setSearchQuery] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
+  const [classFilter, setClassFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortColumn, setSortColumn] = useState<"name" | "username" | "role">(
@@ -148,7 +155,7 @@ export default function AdminPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
 
-  // Form States (Add/Edit)
+  // Form States (Add/Edit user)
   const [formName, setFormName] = useState("");
   const [formUsername, setFormUsername] = useState("");
   const [formPassword, setFormPassword] = useState("");
@@ -156,8 +163,21 @@ export default function AdminPage() {
   const [formEmail, setFormEmail] = useState("");
   const [formNis, setFormNis] = useState("");
   const [formNip, setFormNip] = useState("");
-  const [formKelas, setFormKelas] = useState("");
+  const [formClassId, setFormClassId] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
+
+  // Class management states
+  const [isAddClassModalOpen, setIsAddClassModalOpen] = useState(false);
+  const [isEditClassModalOpen, setIsEditClassModalOpen] = useState(false);
+  const [isDeleteClassModalOpen, setIsDeleteClassModalOpen] = useState(false);
+  const [selectedClassId, setSelectedClassId] = useState<string | null>(null);
+  const [classFormName, setClassFormName] = useState("");
+  const [classFormError, setClassFormError] = useState("");
+
+  // Import preview extras
+  const [previewUnknownClasses, setPreviewUnknownClasses] = useState<string[]>([]);
+
+  const selectedClass = classes.find((c) => c.id === selectedClassId) ?? null;
 
   // Auth block
   if (!canAccess([UserRole.ADMIN])) {
@@ -210,10 +230,12 @@ export default function AdminPage() {
       const preview = await previewImportUsers(role, file);
       setPreviewRows(preview.rows);
       setPreviewTotalRows(preview.totalRows);
+      setPreviewUnknownClasses(preview.unknownClasses ?? []);
       showToast("Berkas dimuat. Pratinjau data di bawah ini.", "success");
     } catch {
       setPreviewRows([]);
       setPreviewTotalRows(0);
+      setPreviewUnknownClasses([]);
       setShowPreview(false);
       setSelectedImportFile(null);
       setFileName(null);
@@ -260,13 +282,17 @@ export default function AdminPage() {
     }
     try {
       const result = await importUsers(importRole, selectedImportFile);
+      const unknownMsg = result.skippedReasons?.unknownClass
+        ? ` (${result.skippedReasons.unknownClass} kelas tidak ditemukan)`
+        : "";
       showToast(
-        `Sukses mengimpor ${result.inserted} pengguna sebagai ${ROLE_LABELS[importRole]}. ${result.skipped} baris dilewati.`,
+        `Sukses mengimpor ${result.inserted} pengguna sebagai ${ROLE_LABELS[importRole]}. ${result.skipped} baris dilewati${unknownMsg}.`,
         "success",
       );
       setSelectedImportFile(null);
       setPreviewRows([]);
       setPreviewTotalRows(0);
+      setPreviewUnknownClasses([]);
       setFileName(null);
       setFileSize(null);
       setShowPreview(false);
@@ -311,10 +337,10 @@ export default function AdminPage() {
     }
     if (formRole === UserRole.SISWA) {
       if (!formNis.trim()) errors.nis = "NIS siswa wajib diisi";
-      if (!formKelas.trim()) errors.kelas = "Kelas wajib diisi";
+      if (!formClassId) errors.kelas = "Kelas wajib dipilih";
     } else if (formRole === UserRole.WALI_KELAS) {
       if (!formNip.trim()) errors.nip = "NIP wajib diisi";
-      if (!formKelas.trim()) errors.kelas = "Kelas binaan wajib diisi";
+      if (!formClassId) errors.kelas = "Kelas binaan wajib dipilih";
     } else {
       if (!formNip.trim()) errors.nip = "NIP wajib diisi";
     }
@@ -342,10 +368,10 @@ export default function AdminPage() {
         password: formPassword,
         role: formRole,
         email: formEmail,
-        ...(formRole === UserRole.SISWA && { nis: formNis, kelas: formKelas }),
+        ...(formRole === UserRole.SISWA && { nis: formNis, classId: formClassId }),
         ...(formRole === UserRole.WALI_KELAS && {
           nip: formNip,
-          kelas: formKelas,
+          classId: formClassId,
         }),
         ...(formRole !== UserRole.SISWA &&
           formRole !== UserRole.WALI_KELAS && { nip: formNip }),
@@ -366,7 +392,7 @@ export default function AdminPage() {
     setFormEmail(user.email);
     setFormNis(user.nis || "");
     setFormNip(user.nip || "");
-    setFormKelas(user.kelas || "");
+    setFormClassId(user.classId || "");
     setFormErrors({});
     setIsEditModalOpen(true);
   };
@@ -396,9 +422,9 @@ export default function AdminPage() {
         email: formEmail,
         nis: formRole === UserRole.SISWA ? formNis : undefined,
         nip: formRole !== UserRole.SISWA ? formNip : undefined,
-        kelas:
+        classId:
           formRole === UserRole.SISWA || formRole === UserRole.WALI_KELAS
-            ? formKelas
+            ? formClassId || undefined
             : undefined,
         ...(formPassword.trim() && { password: formPassword }),
       });
@@ -434,7 +460,7 @@ export default function AdminPage() {
     setFormEmail("");
     setFormNis("");
     setFormNip("");
-    setFormKelas("");
+    setFormClassId("");
     setFormErrors({});
   };
   const closeEditModal = () => {
@@ -454,8 +480,15 @@ export default function AdminPage() {
   // ──────────────────────────────────────────────
   // Filter + Sort + Paginate
   // ──────────────────────────────────────────────
+  const selectedClassFilter = classes.find((c) => c.id === classFilter);
+
   const filteredUsers = users.filter((u) => {
     const matchRole = roleFilter === "all" || u.role === roleFilter;
+    const matchClass =
+      classFilter === "all" ||
+      u.classId === classFilter ||
+      (selectedClassFilter &&
+        u.kelas?.toLowerCase() === selectedClassFilter.name.toLowerCase());
     const q = searchQuery.toLowerCase();
     const matchSearch =
       !q ||
@@ -465,7 +498,7 @@ export default function AdminPage() {
       (u.kelas && u.kelas.toLowerCase().includes(q)) ||
       (u.nis && u.nis.toLowerCase().includes(q)) ||
       (u.nip && u.nip.toLowerCase().includes(q));
-    return matchRole && matchSearch;
+    return matchRole && matchClass && matchSearch;
   });
 
   const sortedUsers = [...filteredUsers].sort((a, b) => {
@@ -495,7 +528,7 @@ export default function AdminPage() {
   // eslint-disable-next-line react-hooks/rules-of-hooks
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, pageSize, roleFilter]);
+  }, [searchQuery, pageSize, roleFilter, classFilter]);
 
   const SortIcon = ({ col }: { col: typeof sortColumn }) =>
     sortColumn === col ? (
@@ -520,6 +553,14 @@ export default function AdminPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          {tab === "classes" && (
+            <button
+              onClick={() => { setClassFormName(""); setClassFormError(""); setIsAddClassModalOpen(true); }}
+              className="btn-primary py-2.5 px-4 bg-gradient-to-r from-indigo-600 to-purple-600 shadow-md shadow-indigo-500/10 text-white font-bold text-xs"
+            >
+              <Plus size={14} /> Tambah Kelas
+            </button>
+          )}
           {tab === "users" && (
             <>
               {/* Export with dropdown */}
@@ -587,14 +628,19 @@ export default function AdminPage() {
         {[
           {
             key: "import" as Tab,
-            label: "Unggah Excel Siswa",
+            label: "Unggah Excel",
             icon: FileSpreadsheet,
           },
-          { key: "users" as Tab, label: "Daftar & CRUD Pengguna", icon: Users },
+          { key: "users" as Tab, label: "Daftar Pengguna", icon: Users },
+          { key: "classes" as Tab, label: "Kelola Kelas", icon: GraduationCap },
         ].map((t) => (
           <button
             key={t.key}
-            onClick={() => setTab(t.key)}
+            onClick={() => {
+              setTab(t.key);
+              if (t.key === "classes" || t.key === "users")
+                loadClasses().catch(() => undefined);
+            }}
             className={`flex items-center gap-2.5 px-5 py-3 rounded-2xl text-xs font-bold transition-all ${
               tab === t.key
                 ? "bg-blue-600 text-white shadow-lg shadow-blue-500/20"
@@ -740,6 +786,25 @@ export default function AdminPage() {
           {/* Preview grid */}
           {showPreview && (
             <div className="card border-slate-200 overflow-hidden">
+              {previewUnknownClasses.length > 0 && (
+                <div className="p-4 bg-amber-50 border-b border-amber-200 flex items-start gap-3">
+                  <AlertCircle size={16} className="text-amber-600 flex-shrink-0 mt-0.5" />
+                  <div>
+                    <p className="text-xs font-bold text-amber-800">
+                      {previewUnknownClasses.length} kelas tidak ditemukan di master data — baris terkait akan di-skip saat import.
+                    </p>
+                    <p className="text-[10px] text-amber-700 mt-1">
+                      Kelas tidak dikenal:{" "}
+                      {previewUnknownClasses.map((k, i) => (
+                        <span key={i} className="inline-block bg-amber-100 border border-amber-300 text-amber-800 rounded px-1.5 py-0.5 font-mono mr-1 mb-1">{k}</span>
+                      ))}
+                    </p>
+                    <p className="text-[10px] text-amber-600 mt-1 font-semibold">
+                      Buat kelas tersebut di tab <strong>Kelola Kelas</strong> terlebih dahulu, lalu upload ulang file ini.
+                    </p>
+                  </div>
+                </div>
+              )}
               <div className="p-5 border-b border-slate-100 bg-slate-50/50 flex flex-col sm:flex-row gap-3 items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Info size={16} className="text-blue-600" />
@@ -813,7 +878,19 @@ export default function AdminPage() {
                           {row.identifier}
                         </td>
                         <td className="px-5 py-3 text-xs font-semibold text-slate-600">
-                          {row.kelas}
+                          <div className="flex items-center gap-1.5">
+                            <span>{row.kelas || "-"}</span>
+                            {row.kelasStatus === "matched" && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-emerald-50 border border-emerald-200 text-emerald-700">
+                                <Check size={8} className="stroke-[3px]" /> OK
+                              </span>
+                            )}
+                            {row.kelasStatus === "missing" && (
+                              <span className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold bg-red-50 border border-red-200 text-red-600">
+                                <AlertCircle size={8} /> Tidak ditemukan
+                              </span>
+                            )}
+                          </div>
                         </td>
                         <td className="px-5 py-3 text-xs text-slate-500">
                           {row.email}
@@ -911,7 +988,7 @@ export default function AdminPage() {
               })}
             </div>
 
-            {/* Search + Row count */}
+            {/* Search + class filter + row count */}
             <div className="px-5 py-3.5 border-b border-slate-100 flex flex-col sm:flex-row gap-3 items-center">
               <div className="relative flex-1 w-full sm:max-w-sm">
                 <Search
@@ -926,10 +1003,37 @@ export default function AdminPage() {
                   className="w-full pl-9 pr-4 py-2 rounded-xl border border-slate-200 text-xs focus:border-blue-400 focus:ring-4 focus:ring-blue-400/5 outline-none font-medium"
                 />
               </div>
-              <p className="text-xs text-slate-400 font-semibold font-mono whitespace-nowrap ml-auto">
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <Filter size={14} className="text-slate-400 flex-shrink-0" />
+                <select
+                  value={classFilter}
+                  onChange={(e) => setClassFilter(e.target.value)}
+                  className="flex-1 sm:min-w-[180px] px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-700 outline-none focus:border-indigo-400 focus:ring-4 focus:ring-indigo-400/5"
+                >
+                  <option value="all">Semua Kelas</option>
+                  {classes.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </select>
+                {classFilter !== "all" && (
+                  <button
+                    type="button"
+                    onClick={() => setClassFilter("all")}
+                    className="p-2 rounded-lg border border-slate-200 text-slate-400 hover:text-slate-600 hover:border-slate-300 transition-colors"
+                    title="Hapus filter kelas"
+                  >
+                    <X size={14} />
+                  </button>
+                )}
+              </div>
+              <p className="text-xs text-slate-400 font-semibold font-mono whitespace-nowrap sm:ml-auto">
                 {filteredUsers.length} dari {users.length} pengguna
                 {roleFilter !== "all" &&
                   ` · ${ROLE_LABELS[roleFilter as UserRole]}`}
+                {classFilter !== "all" && selectedClassFilter &&
+                  ` · ${selectedClassFilter.name}`}
               </p>
             </div>
 
@@ -1129,6 +1233,230 @@ export default function AdminPage() {
         </div>
       )}
 
+      {/* ── TAB: Kelola Kelas ── */}
+      {tab === "classes" && (
+        <div className="space-y-4">
+          <div className="card border-slate-200 overflow-hidden shadow-sm">
+            <div className="p-4 border-b border-slate-100 bg-slate-50/50 flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <GraduationCap size={16} className="text-indigo-600" />
+                <div>
+                  <h3 className="font-bold text-slate-800 text-xs">Master Data Kelas</h3>
+                  <p className="text-[10px] text-slate-400 font-semibold">{classes.length} kelas terdaftar</p>
+                </div>
+              </div>
+            </div>
+            <div className="overflow-x-auto">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 border-b border-slate-100 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
+                  <tr>
+                    <th className="px-5 py-3">Nama Kelas</th>
+                    <th className="px-5 py-3 text-center">Siswa</th>
+                    <th className="px-5 py-3">Wali Kelas</th>
+                    <th className="px-5 py-3 text-right">Tindakan</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {classes.length === 0 ? (
+                    <tr>
+                      <td colSpan={4} className="px-5 py-16 text-center">
+                        <div className="flex flex-col items-center gap-3 text-slate-400">
+                          <GraduationCap size={32} className="opacity-20" />
+                          <p className="font-semibold text-slate-500 text-sm">Belum ada kelas. Tambah kelas terlebih dahulu.</p>
+                        </div>
+                      </td>
+                    </tr>
+                  ) : (
+                    classes.map((cls) => (
+                      <tr key={cls.id} className="hover:bg-slate-50/50 transition-colors group">
+                        <td className="px-5 py-3.5 text-xs font-bold text-slate-800">{cls.name}</td>
+                        <td className="px-5 py-3.5 text-center">
+                          <span className="text-xs font-semibold text-slate-600">{cls.studentCount}</span>
+                        </td>
+                        <td className="px-5 py-3.5">
+                          {cls.homeroomTeachers?.length ? (
+                            <span className="text-xs font-semibold text-slate-700">
+                              {cls.homeroomTeachers.join(", ")}
+                            </span>
+                          ) : (
+                            <span className="text-xs text-slate-400 italic">Belum ada</span>
+                          )}
+                        </td>
+                        <td className="px-5 py-3.5 text-right whitespace-nowrap">
+                          <div className="flex justify-end gap-1.5 opacity-70 group-hover:opacity-100 transition-opacity">
+                            <button
+                              onClick={() => {
+                                setSelectedClassId(cls.id);
+                                setClassFormName(cls.name);
+                                setClassFormError("");
+                                setIsEditClassModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg border border-slate-200 bg-white hover:border-blue-300 hover:text-blue-600 transition-colors"
+                              title="Rename Kelas"
+                            >
+                              <Edit2 size={12} />
+                            </button>
+                            <button
+                              onClick={() => {
+                                setSelectedClassId(cls.id);
+                                setIsDeleteClassModalOpen(true);
+                              }}
+                              className="p-1.5 rounded-lg border border-slate-200 bg-white hover:border-red-300 hover:text-red-600 transition-colors"
+                              title="Hapus Kelas"
+                            >
+                              <Trash2 size={12} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Add Class ── */}
+      {isAddClassModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsAddClassModalOpen(false)} />
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-sm z-10 overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-indigo-600">
+                <GraduationCap size={18} />
+                <h2 className="text-sm font-bold text-slate-800">Tambah Kelas Baru</h2>
+              </div>
+              <button onClick={() => setIsAddClassModalOpen(false)} className="p-1 rounded-lg hover:bg-slate-100 transition-colors text-slate-400"><X size={16} /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="label text-[10px] uppercase font-bold text-slate-400 tracking-wider">Nama Kelas</label>
+                <input
+                  type="text"
+                  placeholder="Contoh: XII IPA 1"
+                  value={classFormName}
+                  onChange={(e) => setClassFormName(e.target.value)}
+                  className="input text-xs py-2 mt-1"
+                  autoFocus
+                />
+                {classFormError && <p className="text-[10px] text-red-500 font-bold mt-1">{classFormError}</p>}
+              </div>
+              <div className="flex gap-2.5 pt-2 border-t border-slate-100 justify-end">
+                <button onClick={() => setIsAddClassModalOpen(false)} className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-500 hover:bg-slate-50">Batal</button>
+                <button
+                  onClick={async () => {
+                    if (!classFormName.trim()) { setClassFormError("Nama kelas wajib diisi"); return; }
+                    try {
+                      await createClass(classFormName.trim());
+                      showToast(`Kelas "${classFormName.trim()}" berhasil ditambahkan.`, "success");
+                      setIsAddClassModalOpen(false);
+                    } catch (e: any) {
+                      setClassFormError(e?.message || "Gagal menambahkan kelas.");
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-indigo-600 hover:bg-indigo-700 shadow-md text-white font-bold text-xs"
+                >
+                  Simpan Kelas
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Edit Class ── */}
+      {isEditClassModalOpen && selectedClass && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsEditClassModalOpen(false)} />
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-sm z-10 overflow-hidden">
+            <div className="flex items-center justify-between p-5 border-b border-slate-100">
+              <div className="flex items-center gap-2 text-blue-600">
+                <Edit2 size={16} />
+                <h2 className="text-sm font-bold text-slate-800">Rename Kelas</h2>
+              </div>
+              <button onClick={() => setIsEditClassModalOpen(false)} className="p-1 rounded-lg hover:bg-slate-100 transition-colors text-slate-400"><X size={16} /></button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="label text-[10px] uppercase font-bold text-slate-400 tracking-wider">Nama Kelas Baru</label>
+                <input
+                  type="text"
+                  value={classFormName}
+                  onChange={(e) => setClassFormName(e.target.value)}
+                  className="input text-xs py-2 mt-1"
+                  autoFocus
+                />
+                {classFormError && <p className="text-[10px] text-red-500 font-bold mt-1">{classFormError}</p>}
+              </div>
+              <div className="flex gap-2.5 pt-2 border-t border-slate-100 justify-end">
+                <button onClick={() => setIsEditClassModalOpen(false)} className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-500 hover:bg-slate-50">Batal</button>
+                <button
+                  onClick={async () => {
+                    if (!classFormName.trim()) { setClassFormError("Nama kelas wajib diisi"); return; }
+                    try {
+                      await updateClass(selectedClass.id, classFormName.trim());
+                      showToast(`Kelas berhasil diubah menjadi "${classFormName.trim()}".`, "success");
+                      setIsEditClassModalOpen(false);
+                    } catch (e: any) {
+                      setClassFormError(e?.message || "Gagal mengubah kelas.");
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-blue-600 hover:bg-blue-700 shadow-md text-white font-bold text-xs"
+                >
+                  Simpan Perubahan
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── MODAL: Delete Class ── */}
+      {isDeleteClassModalOpen && selectedClass && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsDeleteClassModalOpen(false)} />
+          <div className="bg-white rounded-3xl border border-slate-150 shadow-2xl w-full max-w-md z-10 p-6 space-y-4">
+            <div className="flex items-center gap-3 text-red-600">
+              <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center border border-red-100">
+                <ShieldAlert size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-slate-800 text-sm">Hapus Kelas?</h3>
+                <p className="text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-0.5">Tidak bisa jika masih ada siswa terkait</p>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 leading-relaxed">
+              Anda akan menghapus kelas <strong>{selectedClass.name}</strong>.{" "}
+              {selectedClass.studentCount > 0 && (
+                <span className="text-red-500 font-semibold">Kelas ini masih memiliki {selectedClass.studentCount} siswa dan tidak dapat dihapus.</span>
+              )}
+            </p>
+            <div className="flex gap-2.5 justify-end pt-2 border-t border-slate-100">
+              <button onClick={() => setIsDeleteClassModalOpen(false)} className="px-4 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-500 hover:bg-slate-50">Batal</button>
+              <button
+                disabled={selectedClass.studentCount > 0}
+                onClick={async () => {
+                  try {
+                    await deleteClass(selectedClass.id);
+                    showToast(`Kelas "${selectedClass.name}" berhasil dihapus.`, "info");
+                    setIsDeleteClassModalOpen(false);
+                    setSelectedClassId(null);
+                  } catch (e: any) {
+                    showToast(e?.message || "Gagal menghapus kelas.", "error");
+                    setIsDeleteClassModalOpen(false);
+                  }
+                }}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 shadow-md shadow-red-500/10 text-white font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed"
+              >
+                Hapus Kelas
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── MODAL: Add User ── */}
       {isAddModalOpen && (
         <UserFormModal
@@ -1145,6 +1473,7 @@ export default function AdminPage() {
           formRole={formRole}
           setFormRole={(r) => {
             setFormRole(r);
+            setFormClassId("");
             setFormErrors({});
           }}
           formEmail={formEmail}
@@ -1153,8 +1482,9 @@ export default function AdminPage() {
           setFormNis={setFormNis}
           formNip={formNip}
           setFormNip={setFormNip}
-          formKelas={formKelas}
-          setFormKelas={setFormKelas}
+          formClassId={formClassId}
+          setFormClassId={setFormClassId}
+          classes={classes}
           formErrors={formErrors}
           isEdit={false}
           isAdminUser={false}
@@ -1177,6 +1507,7 @@ export default function AdminPage() {
           formRole={formRole}
           setFormRole={(r) => {
             setFormRole(r);
+            setFormClassId("");
             setFormErrors({});
           }}
           formEmail={formEmail}
@@ -1185,8 +1516,9 @@ export default function AdminPage() {
           setFormNis={setFormNis}
           formNip={formNip}
           setFormNip={setFormNip}
-          formKelas={formKelas}
-          setFormKelas={setFormKelas}
+          formClassId={formClassId}
+          setFormClassId={setFormClassId}
+          classes={classes}
           formErrors={formErrors}
           isEdit={true}
           isAdminUser={selectedUser.username === "admin"}
@@ -1262,8 +1594,9 @@ function UserFormModal({
   setFormNis,
   formNip,
   setFormNip,
-  formKelas,
-  setFormKelas,
+  formClassId,
+  setFormClassId,
+  classes,
   formErrors,
   isEdit,
   isAdminUser,
@@ -1286,8 +1619,9 @@ function UserFormModal({
   setFormNis: (v: string) => void;
   formNip: string;
   setFormNip: (v: string) => void;
-  formKelas: string;
-  setFormKelas: (v: string) => void;
+  formClassId: string;
+  setFormClassId: (v: string) => void;
+  classes: { id: string; name: string }[];
   formErrors: Record<string, string>;
   isEdit: boolean;
   isAdminUser: boolean;
@@ -1433,13 +1767,19 @@ function UserFormModal({
                   />
                 </Field>
                 <Field label="Kelas" error={formErrors.kelas}>
-                  <input
-                    type="text"
-                    placeholder="Contoh: XI RPL 1"
-                    value={formKelas}
-                    onChange={(e) => setFormKelas(e.target.value)}
-                    className="input text-xs py-2 uppercase"
-                  />
+                  <select
+                    value={formClassId}
+                    onChange={(e) => setFormClassId(e.target.value)}
+                    className="input text-xs py-2"
+                  >
+                    <option value="">-- Pilih Kelas --</option>
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  {classes.length === 0 && (
+                    <p className="text-[10px] text-amber-600 font-semibold mt-1">Belum ada kelas. Tambah kelas di tab Kelola Kelas terlebih dahulu.</p>
+                  )}
                 </Field>
               </>
             )}
@@ -1456,13 +1796,19 @@ function UserFormModal({
                   />
                 </Field>
                 <Field label="Kelas Binaan" error={formErrors.kelas}>
-                  <input
-                    type="text"
-                    placeholder="Contoh: XI RPL 1"
-                    value={formKelas}
-                    onChange={(e) => setFormKelas(e.target.value)}
-                    className="input text-xs py-2 uppercase"
-                  />
+                  <select
+                    value={formClassId}
+                    onChange={(e) => setFormClassId(e.target.value)}
+                    className="input text-xs py-2"
+                  >
+                    <option value="">-- Pilih Kelas --</option>
+                    {classes.map((c) => (
+                      <option key={c.id} value={c.id}>{c.name}</option>
+                    ))}
+                  </select>
+                  {classes.length === 0 && (
+                    <p className="text-[10px] text-amber-600 font-semibold mt-1">Belum ada kelas. Tambah kelas di tab Kelola Kelas terlebih dahulu.</p>
+                  )}
                 </Field>
               </>
             )}

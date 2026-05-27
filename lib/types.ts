@@ -30,6 +30,7 @@ export interface User {
   password?: string;
   nis?: string;
   kelas?: string;
+  classId?: string;
   nip?: string;
   photoUrl?: string;
 }
@@ -78,6 +79,14 @@ export interface Permission {
   category?: "sakit" | "keperluan" | "dispensasi" | "lainnya";
   comments?: Comment[];
   auditLog?: AuditLogEntry[];
+}
+
+export interface SchoolClass {
+  id: string;
+  name: string;
+  studentCount: number;
+  homeroomCount: number;
+  homeroomTeachers: string[];
 }
 
 export interface Student {
