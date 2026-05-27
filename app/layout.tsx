@@ -3,6 +3,7 @@ import './globals.css';
 import { AppProvider } from '@/context/AppContext';
 
 import PWAInstallPrompt from '@/components/ui/PWAInstallPrompt';
+import GlobalToasts from '@/components/ui/GlobalToasts';
 
 export const dynamic = 'force-dynamic';
 
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body>
         <AppProvider>
           {children}
+          <GlobalToasts />
         </AppProvider>
         <PWAInstallPrompt />
       </body>

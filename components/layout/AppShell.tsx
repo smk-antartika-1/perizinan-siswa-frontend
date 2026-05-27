@@ -6,8 +6,6 @@ import { Menu } from 'lucide-react';
 import Link from 'next/link';
 import Sidebar from './Sidebar';
 import NotificationDropdown from './NotificationDropdown';
-import { ToastContainer } from '@/components/ui/Modal';
-import { useAppContext } from '@/context/AppContext';
 import { useAuth } from '@/hooks/useAuth';
 import StudentDetailModal from '@/components/ui/StudentDetailModal';
 
@@ -27,7 +25,6 @@ const PAGE_TITLES: Record<string, string> = {
 export default function AppShell({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const { toasts, removeToast } = useAppContext();
   const { isAuthenticated, currentUser } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
@@ -104,7 +101,6 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       </main>
 
       <StudentDetailModal />
-      <ToastContainer toasts={toasts} onRemove={removeToast} />
     </div>
   );
 }
