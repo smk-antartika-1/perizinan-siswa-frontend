@@ -34,6 +34,31 @@ export interface ImportPreviewResult {
   summary: { matched: number; missing: number; notRequired: number };
 }
 
+export interface AdminUsersListParams {
+  role?: UserRole | "all";
+  classId?: string;
+  search?: string;
+  page?: number;
+  limit?: number;
+  sort?: "name" | "username" | "role" | "created_at";
+  order?: "asc" | "desc";
+}
+
+export interface AdminUsersListResult {
+  data: User[];
+  meta: {
+    page: number;
+    limit: number;
+    total: number;
+    totalPages: number;
+  };
+}
+
+export interface AdminUserStats {
+  total: number;
+  byRole: Partial<Record<UserRole, number>>;
+}
+
 interface AppContextType {
   currentUser: User | null;
   users: User[];
@@ -67,6 +92,9 @@ interface AppContextType {
   createClass: (name: string) => Promise<SchoolClass>;
   updateClass: (id: string, name: string) => Promise<SchoolClass>;
   deleteClass: (id: string) => Promise<void>;
+
+  listAdminUsers: (params: AdminUsersListParams) => Promise<AdminUsersListResult>;
+  getAdminUserStats: (params?: { classId?: string }) => Promise<AdminUserStats>;
 
   activeStudentNis: string | null;
   viewStudent: (nis: string | null) => void;
@@ -184,13 +212,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setNotifications(data?.data || []);
   }, []);
 
-  const loadAdminUsers = useCallback(async () => {
-    const data = await apiRequest<{ data: User[] }>(
-      "/api/v1/admin/users?limit=100",
-    );
-    setUsers((data?.data || []).map(normalizeUser));
-  }, []);
-
   const loadClasses = useCallback(async () => {
     const data = await apiRequest<SchoolClass[]>("/api/v1/classes");
     setClasses(data || []);
@@ -221,16 +242,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       loadPermissions().catch(() => undefined),
       loadNotifications().catch(() => undefined),
       user.role === UserRole.ADMIN
-        ? Promise.all([
-            loadAdminUsers().catch(() => undefined),
-            loadClasses().catch(() => undefined),
-          ])
+        ? loadClasses().catch(() => undefined)
         : user.role === UserRole.WALI_KELAS || user.role === UserRole.GURU_PIKET
           ? loadStudentsByClass().catch(() => undefined)
           : Promise.resolve(),
     ]);
   }, [
-    loadAdminUsers,
     loadClasses,
     loadNotifications,
     loadPermissions,
@@ -292,9 +309,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       method: "POST",
       body: JSON.stringify(user),
     });
-    const normalized = normalizeUser(created);
-    setUsers((prev) => [normalized, ...prev]);
-    return normalized;
+    return normalizeUser(created);
   }, []);
 
   const updateUser = useCallback(async (id: string, updates: Partial<User>) => {
@@ -302,31 +317,56 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       method: "PATCH",
       body: JSON.stringify(updates),
     });
-    const normalized = normalizeUser(updated);
-    setUsers((prev) => prev.map((u) => (u.id === id ? normalized : u)));
-    return normalized;
+    return normalizeUser(updated);
   }, []);
 
   const deleteUser = useCallback(async (id: string) => {
     await apiRequest(`/api/v1/admin/users/${id}`, { method: "DELETE" });
-    setUsers((prev) => prev.filter((u) => u.id !== id));
   }, []);
 
-  const importUsers = useCallback(
-    async (role: UserRole, file: File) => {
-      const form = new FormData();
-      form.append("file", file);
-      const result = await apiRequest<{ inserted: number; skipped: number }>(
-        `/api/v1/admin/users/import.xlsx?role=${role}`,
-        {
-          method: "POST",
-          body: form,
-        },
-      );
-      await loadAdminUsers().catch(() => undefined);
-      return result;
+  const importUsers = useCallback(async (role: UserRole, file: File) => {
+    const form = new FormData();
+    form.append("file", file);
+    return apiRequest<{
+      inserted: number;
+      skipped: number;
+      skippedReasons?: { unknownClass: number };
+    }>(`/api/v1/admin/users/import.xlsx?role=${role}`, {
+      method: "POST",
+      body: form,
+    });
+  }, []);
+
+  const listAdminUsers = useCallback(async (params: AdminUsersListParams) => {
+    const q = new URLSearchParams();
+    if (params.role && params.role !== "all") q.set("role", params.role);
+    if (params.classId && params.classId !== "all")
+      q.set("classId", params.classId);
+    if (params.search?.trim()) q.set("search", params.search.trim());
+    q.set("page", String(params.page ?? 1));
+    q.set("limit", String(params.limit ?? 10));
+    if (params.sort) q.set("sort", params.sort);
+    if (params.order) q.set("order", params.order);
+
+    const data = await apiRequest<{
+      data: User[];
+      meta: AdminUsersListResult["meta"];
+    }>(`/api/v1/admin/users?${q.toString()}`);
+    return {
+      data: (data?.data || []).map(normalizeUser),
+      meta: data.meta,
+    };
+  }, []);
+
+  const getAdminUserStats = useCallback(
+    async (params: { classId?: string } = {}) => {
+      const q = new URLSearchParams();
+      if (params.classId && params.classId !== "all")
+        q.set("classId", params.classId);
+      const suffix = q.toString() ? `?${q.toString()}` : "";
+      return apiRequest<AdminUserStats>(`/api/v1/admin/users/stats${suffix}`);
     },
-    [loadAdminUsers],
+    [],
   );
 
   const previewImportUsers = useCallback(async (role: UserRole, file: File) => {
@@ -533,6 +573,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         createClass,
         updateClass,
         deleteClass,
+        listAdminUsers,
+        getAdminUserStats,
         activeStudentNis,
         viewStudent,
         permissions,

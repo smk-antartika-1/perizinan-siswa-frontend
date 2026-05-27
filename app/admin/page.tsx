@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import {
   Settings,
   Upload,
@@ -29,8 +29,12 @@ import {
   GraduationCap,
 } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
-import { useAuth } from "@/hooks/useAuth";
-import { useAppContext, type ImportPreviewRow } from "@/context/AppContext";
+import {
+  useAppContext,
+  type AdminUserStats,
+  type ImportPreviewRow,
+} from "@/context/AppContext";
+import { ApiError } from "@/lib/api";
 import { UserRole, ROLE_LABELS, User } from "@/lib/types";
 
 type Tab = "import" | "users" | "classes";
@@ -98,9 +102,8 @@ const ROLE_BADGE_COLORS: Record<UserRole, string> = {
 };
 
 export default function AdminPage() {
-  const { canAccess } = useAuth();
   const {
-    users,
+    currentUser,
     addUser,
     updateUser,
     deleteUser,
@@ -113,6 +116,8 @@ export default function AdminPage() {
     createClass,
     updateClass,
     deleteClass,
+    listAdminUsers,
+    getAdminUserStats,
     showToast,
   } = useAppContext();
 
@@ -121,14 +126,27 @@ export default function AdminPage() {
 
   // Search, Filter, Sort & Pagination
   const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState<RoleFilter>("all");
   const [classFilter, setClassFilter] = useState<string>("all");
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortColumn, setSortColumn] = useState<"name" | "username" | "role">(
-    "name",
+    "role",
   );
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [adminUsers, setAdminUsers] = useState<User[]>([]);
+  const [usersMeta, setUsersMeta] = useState({
+    page: 1,
+    limit: 10,
+    total: 0,
+    totalPages: 1,
+  });
+  const [userStats, setUserStats] = useState<AdminUserStats>({
+    total: 0,
+    byRole: {},
+  });
+  const [usersLoading, setUsersLoading] = useState(false);
 
   // Export dropdown
   const [exportDropdownOpen, setExportDropdownOpen] = useState(false);
@@ -179,22 +197,56 @@ export default function AdminPage() {
 
   const selectedClass = classes.find((c) => c.id === selectedClassId) ?? null;
 
-  // Auth block
-  if (!canAccess([UserRole.ADMIN])) {
-    return (
-      <AppShell>
-        <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
-          <Settings size={40} className="opacity-20 animate-spin" />
-          <p className="font-semibold">
-            Anda tidak memiliki hak akses administrator
-          </p>
-        </div>
-      </AppShell>
-    );
-  }
+  const refreshAdminUsers = useCallback(async () => {
+    setUsersLoading(true);
+    try {
+      const classIdParam =
+        classFilter !== "all" ? classFilter : undefined;
+      const [list, stats] = await Promise.all([
+        listAdminUsers({
+          role: roleFilter,
+          classId: classIdParam,
+          search: debouncedSearch,
+          page: currentPage,
+          limit: pageSize,
+          sort: sortColumn,
+          order: sortDirection,
+        }),
+        getAdminUserStats({ classId: classIdParam }),
+      ]);
+      setAdminUsers(list.data);
+      setUsersMeta(list.meta);
+      setUserStats(stats);
+    } catch {
+      showToast("Gagal memuat daftar pengguna.", "error");
+    } finally {
+      setUsersLoading(false);
+    }
+  }, [
+    classFilter,
+    currentPage,
+    debouncedSearch,
+    getAdminUserStats,
+    listAdminUsers,
+    pageSize,
+    roleFilter,
+    showToast,
+    sortColumn,
+    sortDirection,
+  ]);
 
-  // Close export dropdown on outside click
-  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const hasAdminAccess = currentUser?.role === UserRole.ADMIN;
+
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery), 400);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  useEffect(() => {
+    if (tab !== "users" || !hasAdminAccess) return;
+    void refreshAdminUsers();
+  }, [tab, refreshAdminUsers, hasAdminAccess]);
+
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
       if (
@@ -207,6 +259,10 @@ export default function AdminPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch, pageSize, roleFilter, classFilter]);
 
   // ──────────────────────────────────────────────
   // Excel drag & drop
@@ -297,7 +353,9 @@ export default function AdminPage() {
       setFileSize(null);
       setShowPreview(false);
       setRoleFilter(importRole);
+      setCurrentPage(1);
       setTab("users");
+      await refreshAdminUsers();
     } catch {
       showToast("Import gagal. Pastikan format file sesuai template.", "error");
     }
@@ -352,15 +410,6 @@ export default function AdminPage() {
   const handleAddSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!validateForm(false)) return;
-    if (
-      users.some((u) => u.username.toLowerCase() === formUsername.toLowerCase())
-    ) {
-      setFormErrors((prev) => ({
-        ...prev,
-        username: "Username sudah digunakan",
-      }));
-      return;
-    }
     try {
       await addUser({
         name: formName,
@@ -378,7 +427,15 @@ export default function AdminPage() {
       });
       showToast(`Pengguna baru ${formName} berhasil ditambahkan!`, "success");
       closeAddModal();
-    } catch {
+      await refreshAdminUsers();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setFormErrors((prev) => ({
+          ...prev,
+          username: "Username sudah digunakan",
+        }));
+        return;
+      }
       showToast("Gagal menambahkan pengguna.", "error");
     }
   };
@@ -400,20 +457,6 @@ export default function AdminPage() {
   const handleEditSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedUser || !validateForm(true)) return;
-    if (
-      formUsername !== selectedUser.username &&
-      users.some(
-        (u) =>
-          u.id !== selectedUser.id &&
-          u.username.toLowerCase() === formUsername.toLowerCase(),
-      )
-    ) {
-      setFormErrors((prev) => ({
-        ...prev,
-        username: "Username sudah digunakan",
-      }));
-      return;
-    }
     try {
       await updateUser(selectedUser.id, {
         name: formName,
@@ -430,23 +473,44 @@ export default function AdminPage() {
       });
       showToast(`Profil pengguna ${formName} berhasil diperbarui.`, "success");
       closeEditModal();
-    } catch {
+      await refreshAdminUsers();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 409) {
+        setFormErrors((prev) => ({
+          ...prev,
+          username: "Username sudah digunakan",
+        }));
+        return;
+      }
       showToast("Gagal memperbarui pengguna.", "error");
     }
   };
 
   const openDeleteModal = (user: User) => {
+    if (user.id === currentUser?.id) {
+      showToast("Tidak dapat menghapus akun Anda sendiri.", "error");
+      return;
+    }
     setSelectedUser(user);
     setIsDeleteModalOpen(true);
   };
   const handleDeleteExecute = async () => {
     if (!selectedUser) return;
+    if (selectedUser.id === currentUser?.id) {
+      showToast("Tidak dapat menghapus akun Anda sendiri.", "error");
+      return;
+    }
     try {
       await deleteUser(selectedUser.id);
       showToast(`Pengguna ${selectedUser.name} telah dihapus.`, "info");
       setIsDeleteModalOpen(false);
       setSelectedUser(null);
-    } catch {
+      await refreshAdminUsers();
+    } catch (err) {
+      if (err instanceof ApiError && err.status === 403) {
+        showToast(err.message || "Tidak dapat menghapus akun Anda sendiri.", "error");
+        return;
+      }
       showToast("Gagal menghapus pengguna.", "error");
     }
   };
@@ -475,60 +539,11 @@ export default function AdminPage() {
       setSortColumn(col);
       setSortDirection("asc");
     }
+    setCurrentPage(1);
   };
 
-  // ──────────────────────────────────────────────
-  // Filter + Sort + Paginate
-  // ──────────────────────────────────────────────
   const selectedClassFilter = classes.find((c) => c.id === classFilter);
-
-  const filteredUsers = users.filter((u) => {
-    const matchRole = roleFilter === "all" || u.role === roleFilter;
-    const matchClass =
-      classFilter === "all" ||
-      u.classId === classFilter ||
-      (selectedClassFilter &&
-        u.kelas?.toLowerCase() === selectedClassFilter.name.toLowerCase());
-    const q = searchQuery.toLowerCase();
-    const matchSearch =
-      !q ||
-      u.name.toLowerCase().includes(q) ||
-      u.username.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) ||
-      (u.kelas && u.kelas.toLowerCase().includes(q)) ||
-      (u.nis && u.nis.toLowerCase().includes(q)) ||
-      (u.nip && u.nip.toLowerCase().includes(q));
-    return matchRole && matchClass && matchSearch;
-  });
-
-  const sortedUsers = [...filteredUsers].sort((a, b) => {
-    let cmp = 0;
-    if (sortColumn === "name") cmp = a.name.localeCompare(b.name);
-    else if (sortColumn === "username")
-      cmp = a.username.localeCompare(b.username);
-    else if (sortColumn === "role") cmp = a.role.localeCompare(b.role);
-    return sortDirection === "asc" ? cmp : -cmp;
-  });
-
-  const totalPages = Math.ceil(sortedUsers.length / pageSize) || 1;
-  const paginatedUsers = sortedUsers.slice(
-    (currentPage - 1) * pageSize,
-    currentPage * pageSize,
-  );
-
-  // Role stats
-  const roleCounts = Object.values(UserRole).reduce(
-    (acc, r) => {
-      acc[r] = users.filter((u) => u.role === r).length;
-      return acc;
-    },
-    {} as Record<UserRole, number>,
-  );
-
-  // eslint-disable-next-line react-hooks/rules-of-hooks
-  useEffect(() => {
-    setCurrentPage(1);
-  }, [searchQuery, pageSize, roleFilter, classFilter]);
+  const totalPages = usersMeta.totalPages || 1;
 
   const SortIcon = ({ col }: { col: typeof sortColumn }) =>
     sortColumn === col ? (
@@ -540,6 +555,30 @@ export default function AdminPage() {
     ) : null;
 
   const activeRoleOpt = ROLE_FILTER_OPTIONS.find((o) => o.key === roleFilter)!;
+
+  if (!currentUser) {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
+          <Loader2 size={40} className="animate-spin text-blue-500" />
+          <p className="font-semibold">Memuat panel administrasi...</p>
+        </div>
+      </AppShell>
+    );
+  }
+
+  if (!hasAdminAccess) {
+    return (
+      <AppShell>
+        <div className="flex flex-col items-center justify-center py-20 gap-3 text-slate-400">
+          <Settings size={40} className="opacity-20" />
+          <p className="font-semibold">
+            Anda tidak memiliki hak akses administrator
+          </p>
+        </div>
+      </AppShell>
+    );
+  }
 
   return (
     <AppShell>
@@ -587,7 +626,7 @@ export default function AdminPage() {
                       className="w-full text-left px-3 py-2.5 text-xs font-semibold text-slate-700 hover:bg-slate-50 flex items-center gap-2 transition-colors"
                     >
                       <span className="w-2 h-2 rounded-full bg-slate-500 flex-shrink-0" />
-                      Semua Pengguna ({users.length})
+                      Semua Pengguna ({userStats.total})
                     </button>
                     {Object.values(UserRole).map((r) => (
                       <button
@@ -606,7 +645,7 @@ export default function AdminPage() {
                             }[r]
                           }`}
                         />
-                        {ROLE_LABELS[r]} ({roleCounts[r] || 0})
+                        {ROLE_LABELS[r]} ({userStats.byRole[r] || 0})
                       </button>
                     ))}
                   </div>
@@ -913,32 +952,32 @@ export default function AdminPage() {
             {[
               {
                 label: "Total",
-                count: users.length,
+                count: userStats.total,
                 color: "from-slate-600 to-slate-700",
               },
               {
                 label: "Siswa",
-                count: roleCounts[UserRole.SISWA] || 0,
+                count: userStats.byRole[UserRole.SISWA] || 0,
                 color: "from-blue-500 to-blue-600",
               },
               {
                 label: "Wali Kelas",
-                count: roleCounts[UserRole.WALI_KELAS] || 0,
+                count: userStats.byRole[UserRole.WALI_KELAS] || 0,
                 color: "from-purple-500 to-purple-600",
               },
               {
                 label: "Guru Piket",
-                count: roleCounts[UserRole.GURU_PIKET] || 0,
+                count: userStats.byRole[UserRole.GURU_PIKET] || 0,
                 color: "from-amber-500 to-amber-600",
               },
               {
                 label: "Security",
-                count: roleCounts[UserRole.SECURITY] || 0,
+                count: userStats.byRole[UserRole.SECURITY] || 0,
                 color: "from-emerald-500 to-emerald-600",
               },
               {
                 label: "Admin",
-                count: roleCounts[UserRole.ADMIN] || 0,
+                count: userStats.byRole[UserRole.ADMIN] || 0,
                 color: "from-red-500 to-red-600",
               },
             ].map((stat) => (
@@ -960,13 +999,16 @@ export default function AdminPage() {
               {ROLE_FILTER_OPTIONS.map((opt) => {
                 const count =
                   opt.key === "all"
-                    ? users.length
-                    : users.filter((u) => u.role === opt.key).length;
+                    ? userStats.total
+                    : userStats.byRole[opt.key as UserRole] || 0;
                 const isActive = roleFilter === opt.key;
                 return (
                   <button
                     key={opt.key}
-                    onClick={() => setRoleFilter(opt.key)}
+                    onClick={() => {
+                      setRoleFilter(opt.key);
+                      setCurrentPage(1);
+                    }}
                     className={`flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold transition-all border ${
                       isActive
                         ? `${opt.bg} text-white border-transparent shadow-sm`
@@ -1029,7 +1071,8 @@ export default function AdminPage() {
                 )}
               </div>
               <p className="text-xs text-slate-400 font-semibold font-mono whitespace-nowrap sm:ml-auto">
-                {filteredUsers.length} dari {users.length} pengguna
+                {usersMeta.total} pengguna
+                {usersLoading ? " · memuat..." : ""}
                 {roleFilter !== "all" &&
                   ` · ${ROLE_LABELS[roleFilter as UserRole]}`}
                 {classFilter !== "all" && selectedClassFilter &&
@@ -1072,8 +1115,22 @@ export default function AdminPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-50">
-                  {paginatedUsers.length > 0 ? (
-                    paginatedUsers.map((u) => (
+                  {usersLoading && (
+                    <tr>
+                      <td
+                        colSpan={6}
+                        className="px-5 py-12 text-center text-xs font-semibold text-slate-400"
+                      >
+                        <Loader2
+                          size={20}
+                          className="animate-spin mx-auto mb-2 text-blue-500"
+                        />
+                        Memuat data pengguna...
+                      </td>
+                    </tr>
+                  )}
+                  {!usersLoading && adminUsers.length > 0 ? (
+                    adminUsers.map((u) => (
                       <tr
                         key={u.id}
                         className="hover:bg-slate-50/50 transition-colors group"
@@ -1122,8 +1179,12 @@ export default function AdminPage() {
                             <button
                               onClick={() => openDeleteModal(u)}
                               className="p-1.5 rounded-lg border border-slate-200 bg-white hover:border-red-300 hover:text-red-600 transition-colors disabled:opacity-20"
-                              title="Hapus Pengguna"
-                              disabled={u.username === "admin"}
+                              title={
+                                u.id === currentUser?.id
+                                  ? "Tidak dapat menghapus akun sendiri"
+                                  : "Hapus Pengguna"
+                              }
+                              disabled={u.id === currentUser?.id}
                             >
                               <Trash2 size={12} />
                             </button>
@@ -1131,7 +1192,7 @@ export default function AdminPage() {
                         </td>
                       </tr>
                     ))
-                  ) : (
+                  ) : !usersLoading ? (
                     <tr>
                       <td colSpan={6} className="px-5 py-16 text-center">
                         <div className="flex flex-col items-center gap-3 text-slate-400">
@@ -1139,7 +1200,7 @@ export default function AdminPage() {
                           <div>
                             <p className="font-semibold text-slate-500 text-sm">
                               {roleFilter !== "all"
-                                ? `Belum ada ${ROLE_LABELS[roleFilter as UserRole]} terdaftar`
+                                ? `Tidak ada ${ROLE_LABELS[roleFilter as UserRole]} yang cocok`
                                 : "Tidak ada pengguna ditemukan"}
                             </p>
                             {roleFilter !== "all" && (
@@ -1155,13 +1216,13 @@ export default function AdminPage() {
                         </div>
                       </td>
                     </tr>
-                  )}
+                  ) : null}
                 </tbody>
               </table>
             </div>
 
             {/* Pagination Footer */}
-            {sortedUsers.length > 0 && (
+            {!usersLoading && usersMeta.total > 0 && (
               <div className="p-4 bg-slate-50/50 border-t border-slate-100 flex flex-col sm:flex-row gap-3 items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="text-xs text-slate-400 font-semibold">
@@ -1179,11 +1240,11 @@ export default function AdminPage() {
                   </select>
                   <span className="text-xs text-slate-400 font-semibold font-mono ml-2">
                     {Math.min(
-                      sortedUsers.length,
+                      usersMeta.total,
                       (currentPage - 1) * pageSize + 1,
                     )}
-                    –{Math.min(sortedUsers.length, currentPage * pageSize)} dari{" "}
-                    {sortedUsers.length}
+                    –{Math.min(usersMeta.total, currentPage * pageSize)} dari{" "}
+                    {usersMeta.total}
                   </span>
                 </div>
                 <div className="flex items-center gap-1">
@@ -1560,7 +1621,8 @@ export default function AdminPage() {
               </button>
               <button
                 onClick={handleDeleteExecute}
-                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 shadow-md shadow-red-500/10 text-white font-bold text-xs"
+                disabled={selectedUser.id === currentUser?.id}
+                className="px-4 py-2 rounded-xl bg-red-600 hover:bg-red-700 shadow-md shadow-red-500/10 text-white font-bold text-xs disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 Hapus Sekarang
               </button>
