@@ -1,4 +1,4 @@
-import { Permission, PermissionStatus } from "./types";
+import { Permission, PermissionStatus, UserRole } from "./types";
 
 export function getPermissionExpiry(permission: Permission): Date | null {
   if (permission.expiresAt) {
@@ -33,6 +33,38 @@ export function getDisplayStatus(permission: Permission): PermissionStatus {
   return isPermissionExpired(permission)
     ? PermissionStatus.EXPIRED
     : permission.status;
+}
+
+/** True when approval workflow is finished (no further wali/piket actions). */
+export function isApprovalFlowComplete(permission: Permission): boolean {
+  const displayStatus = getDisplayStatus(permission);
+  return (
+    displayStatus === PermissionStatus.EXPIRED ||
+    displayStatus === PermissionStatus.APPROVED_PIKET ||
+    displayStatus === PermissionStatus.COMPLETED ||
+    displayStatus === PermissionStatus.REJECTED
+  );
+}
+
+export function canApprovePermission(
+  permission: Permission,
+  role: UserRole | undefined,
+): boolean {
+  if (!role || isApprovalFlowComplete(permission)) return false;
+
+  if (role === UserRole.ADMIN) {
+    return (
+      permission.status === PermissionStatus.PENDING ||
+      permission.status === PermissionStatus.APPROVED_WALI
+    );
+  }
+  if (role === UserRole.WALI_KELAS) {
+    return permission.status === PermissionStatus.PENDING;
+  }
+  if (role === UserRole.GURU_PIKET) {
+    return permission.status === PermissionStatus.APPROVED_WALI;
+  }
+  return false;
 }
 
 export function formatDate(dateStr: string): string {

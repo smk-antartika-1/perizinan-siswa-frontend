@@ -30,6 +30,7 @@ import {
   formatDateTime,
   generateQRValue,
   getDisplayStatus,
+  canApprovePermission,
 } from "@/lib/utils";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { apiRequest } from "@/lib/api";
@@ -364,22 +365,21 @@ export default function PermissionDetailPage() {
     },
   ];
 
-  // Logic to determine if user can approve
-  const canApprove = () => {
-    if (!currentUser) return false;
-    if (currentUser.role === UserRole.ADMIN) return true;
-    if (
-      permission.status === PermissionStatus.PENDING &&
-      currentUser.role === UserRole.WALI_KELAS
-    )
-      return true;
-    if (
-      permission.status === PermissionStatus.APPROVED_WALI &&
-      currentUser.role === UserRole.GURU_PIKET
-    )
-      return true;
-    return false;
-  };
+  const showApprovalForm = canApprovePermission(
+    permission,
+    currentUser?.role,
+  );
+
+  const approverRoleLabel =
+    currentUser?.role === UserRole.WALI_KELAS
+      ? "Wali Kelas"
+      : currentUser?.role === UserRole.GURU_PIKET
+        ? "Guru Piket"
+        : currentUser?.role === UserRole.ADMIN
+          ? permission.status === PermissionStatus.PENDING
+            ? "Admin (sebagai Wali Kelas)"
+            : "Admin (sebagai Guru Piket)"
+          : "Petugas";
 
   const canPrintTicket =
     currentUser &&
@@ -694,7 +694,7 @@ export default function PermissionDetailPage() {
         {/* Right Column: Actions Form & Comments */}
         <div className="space-y-8">
           {/* Action Approval Panel */}
-          {canApprove() && (
+          {showApprovalForm && (
             <div className="card p-6 border-blue-200 bg-gradient-to-br from-white to-blue-50/20">
               <div className="flex items-center gap-2 pb-4 mb-4 border-b border-slate-100">
                 <Shield size={16} className="text-blue-600" />
@@ -706,10 +706,8 @@ export default function PermissionDetailPage() {
               <div className="space-y-4">
                 <p className="text-xs text-slate-500 leading-relaxed">
                   Sebagai <strong>{currentUser?.name}</strong> (
-                  {currentUser?.role === UserRole.WALI_KELAS
-                    ? "Wali Kelas"
-                    : "Guru Piket"}
-                  ), Anda berhak menindaklanjuti pengajuan perizinan ini.
+                  {approverRoleLabel}), Anda berhak menindaklanjuti pengajuan
+                  perizinan ini.
                 </p>
 
                 {/* Additional inputs based on role */}

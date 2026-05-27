@@ -9,7 +9,14 @@ import {
 } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Permission, PermissionStatus, UserRole } from '@/lib/types';
-import { formatDateTime, formatEstimatedReturn, formatTime, generateQRValue, getDisplayStatus } from '@/lib/utils';
+import {
+  formatDateTime,
+  formatEstimatedReturn,
+  formatTime,
+  generateQRValue,
+  getDisplayStatus,
+  canApprovePermission,
+} from '@/lib/utils';
 import { useAppContext } from '@/context/AppContext';
 import Modal from '@/components/ui/Modal';
 import { QRCodeSVG } from 'qrcode.react';
@@ -45,11 +52,7 @@ export default function PermissionCard({
   const studentUser = users.find(u => u.name === p.studentName || u.id === p.studentId);
   const studentNis = studentUser?.nis || 'NIS-MOCK';
 
-  const canApprove =
-    showActions &&
-    ((userRole === UserRole.WALI_KELAS && p.status === PermissionStatus.PENDING) ||
-      (userRole === UserRole.GURU_PIKET && p.status === PermissionStatus.APPROVED_WALI) ||
-      (userRole === UserRole.ADMIN && (p.status === PermissionStatus.PENDING || p.status === PermissionStatus.APPROVED_WALI)));
+  const canApprove = showActions && canApprovePermission(p, userRole);
 
   // Stepper Mini config
   const isWaliDone = p.status !== PermissionStatus.PENDING && p.status !== PermissionStatus.REJECTED;
