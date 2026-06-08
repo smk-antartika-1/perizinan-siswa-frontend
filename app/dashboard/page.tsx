@@ -1,22 +1,34 @@
 'use client';
 
-import { useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { motion } from 'motion/react';
 import {
   ClipboardList, Clock, CheckCircle2, XCircle, TrendingUp,
-  AlertCircle, QrCode, Plus, ArrowRight, Eye
+  AlertCircle, QrCode, Plus, ArrowRight, Eye, Loader2, History
 } from 'lucide-react';
 import Link from 'next/link';
 import AppShell from '@/components/layout/AppShell';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { useAuth } from '@/hooks/useAuth';
 import { usePermissions } from '@/hooks/usePermissions';
-import { ROLE_LABELS, UserRole, PermissionStatus } from '@/lib/types';
-import { getPermissionStats, formatDateTime } from '@/lib/utils';
+import { ROLE_LABELS, UserRole, PermissionStatus, Permission } from '@/lib/types';
+import { getPermissionStats, formatDateTime, getDisplayStatus } from '@/lib/utils';
 import { QRGenerator } from '@/components/qr/QRComponents';
 import PermissionCard from '@/components/permissions/PermissionCard';
 import { useAppContext } from '@/context/AppContext';
 import Modal from '@/components/ui/Modal';
+import { apiRequest } from '@/lib/api';
+
+type ScannedPermission = Permission & {
+  scannedAt?: string;
+};
+
+function getReturnState(permission: Permission) {
+  return permission.status === PermissionStatus.COMPLETED &&
+    permission.rawStatus !== 'closed_no_return'
+    ? 'returned'
+    : 'not_returned';
+}
 
 export default function DashboardPage() {
   const { currentUser } = useAuth();
@@ -26,12 +38,61 @@ export default function DashboardPage() {
     activePermission,
     approveAsWali,
     approveAsPiket,
-    reject
+    reject,
+    markCompleted
   } = usePermissions();
   const { showToast } = useAppContext();
 
   const [rejectingPermId, setRejectingPermId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
+  const [securityScans, setSecurityScans] = useState<ScannedPermission[]>([]);
+  const [loadingSecurityScans, setLoadingSecurityScans] = useState(false);
+  const [updatingReturnId, setUpdatingReturnId] = useState<string | null>(null);
+
+  const loadSecurityScans = useCallback(async (showLoading = true) => {
+    if (showLoading) setLoadingSecurityScans(true);
+    try {
+      const data = await apiRequest<{ data: ScannedPermission[] }>(
+        '/api/v1/security/scanned-permissions',
+      );
+      setSecurityScans(data?.data || []);
+    } catch (err: any) {
+      showToast(err?.message || 'Gagal memuat data siswa hasil scan.', 'error');
+    } finally {
+      if (showLoading) setLoadingSecurityScans(false);
+    }
+  }, [showToast]);
+
+  useEffect(() => {
+    if (currentUser?.role === UserRole.SECURITY) {
+      loadSecurityScans();
+    }
+  }, [currentUser?.role, loadSecurityScans]);
+
+  const notReturnedScans = useMemo(
+    () =>
+      securityScans
+        .filter((permission) => getReturnState(permission) === 'not_returned')
+        .sort(
+          (a, b) =>
+            new Date(b.scannedAt || b.createdAt).getTime() -
+            new Date(a.scannedAt || a.createdAt).getTime(),
+        ),
+    [securityScans],
+  );
+
+  const handleMarkReturnedFromDashboard = async (id: string) => {
+    setUpdatingReturnId(id);
+    try {
+      await markCompleted(id);
+      showToast('Siswa berhasil dicatat sudah kembali ke sekolah', 'success');
+      await loadSecurityScans(false);
+    } catch (err: any) {
+      showToast(err?.message || 'Gagal mencatat siswa sudah kembali', 'error');
+    } finally {
+      setUpdatingReturnId(null);
+    }
+  };
 
   if (!currentUser) return null;
 
@@ -139,6 +200,111 @@ export default function DashboardPage() {
           </motion.div>
         ))}
       </div>
+
+      {currentUser.role === UserRole.SECURITY && (
+        <motion.section
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mb-8"
+        >
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-3">
+            <div>
+              <h2 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+                <AlertCircle size={16} className="text-amber-500" />
+                Siswa Belum Kembali
+              </h2>
+              <p className="text-xs text-slate-400 mt-1">
+                Klik kartu siswa untuk mencatat kepulangan langsung.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              {notReturnedScans.length > 0 && (
+                <span className="px-2.5 py-1 rounded-full bg-amber-50 text-amber-700 border border-amber-100 text-xs font-bold">
+                  {notReturnedScans.length} perlu dicek
+                </span>
+              )}
+              <Link
+                href="/scan-qr"
+                className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-bold text-blue-600 hover:border-blue-200 hover:bg-blue-50 transition-colors"
+              >
+                <History size={13} />
+                Daftar Scan
+              </Link>
+            </div>
+          </div>
+
+          {loadingSecurityScans ? (
+            <div className="card-lg p-6 flex items-center justify-center gap-3 text-slate-400">
+              <Loader2 size={18} className="animate-spin text-blue-500" />
+              <span className="text-sm font-semibold">Memuat siswa hasil scan...</span>
+            </div>
+          ) : notReturnedScans.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+              {notReturnedScans.map((permission) => {
+                const isUpdating = updatingReturnId === permission.id;
+                const canMarkReturned =
+                  getDisplayStatus(permission) === PermissionStatus.APPROVED_PIKET;
+
+                return (
+                  <button
+                    key={permission.id}
+                    type="button"
+                    onClick={() => handleMarkReturnedFromDashboard(permission.id)}
+                    disabled={isUpdating || !canMarkReturned}
+                    className="group text-left rounded-2xl border border-amber-200 bg-amber-50/70 hover:bg-white hover:border-emerald-300 hover:shadow-md p-4 transition-all disabled:opacity-60 disabled:cursor-not-allowed"
+                    title="Tandai siswa sudah kembali"
+                  >
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="font-bold text-slate-800 text-sm truncate">
+                          {permission.studentName}
+                        </p>
+                        <p className="text-xs text-slate-500 font-semibold mt-0.5">
+                          {permission.kelas}
+                        </p>
+                      </div>
+                      <span className="flex-shrink-0 px-2 py-0.5 rounded-full bg-white text-amber-700 border border-amber-200 text-[10px] font-bold">
+                        Belum
+                      </span>
+                    </div>
+
+                    <p className="text-xs text-slate-500 mt-3 line-clamp-2">
+                      {permission.reason}
+                    </p>
+                    <p className="text-[10px] text-slate-400 mt-2">
+                      Scan: {permission.scannedAt ? formatDateTime(permission.scannedAt) : '-'}
+                    </p>
+
+                    <div className="mt-4 flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-bold text-emerald-700 group-hover:text-emerald-800">
+                        {isUpdating ? 'Menyimpan...' : 'Tandai Sudah Kembali'}
+                      </span>
+                      {isUpdating ? (
+                        <Loader2 size={16} className="animate-spin text-emerald-600" />
+                      ) : (
+                        <CheckCircle2 size={16} className="text-emerald-600" />
+                      )}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          ) : (
+            <div className="card-lg p-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+              <div>
+                <p className="text-sm font-bold text-slate-800">Tidak ada siswa yang belum kembali</p>
+                <p className="text-xs text-slate-400 mt-1">
+                  Data akan muncul di sini setelah QR siswa discan oleh security.
+                </p>
+              </div>
+              <span className="inline-flex items-center gap-1.5 px-3 py-2 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-100 text-xs font-bold">
+                <CheckCircle2 size={14} />
+                Semua aman
+              </span>
+            </div>
+          )}
+        </motion.section>
+      )}
 
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Siswa: QR aktif + CTA */}

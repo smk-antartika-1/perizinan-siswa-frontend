@@ -13,13 +13,12 @@ import {
   formatDateTime,
   formatEstimatedReturn,
   formatTime,
-  generateQRValue,
   getDisplayStatus,
   canApprovePermission,
 } from '@/lib/utils';
 import { useAppContext } from '@/context/AppContext';
 import Modal from '@/components/ui/Modal';
-import { QRCodeSVG } from 'qrcode.react';
+import { SecureQRCode } from '@/components/qr/QRComponents';
 
 interface PermissionCardProps {
   permission: Permission;
@@ -321,7 +320,7 @@ export default function PermissionCard({
       <Modal isOpen={qrOpen} onClose={() => setQrOpen(false)} title="QR Code Tiket Siswa" size="sm">
         <div className="flex flex-col items-center gap-4 py-2">
           <div className="bg-slate-50 p-5 rounded-3xl border border-slate-100 shadow-sm">
-            <QRCodeSVG value={generateQRValue(p)} size={180} level="H" />
+            <SecureQRCode permission={p} size={180} />
           </div>
           <div className="text-center">
             <h4 className="font-bold text-slate-800 text-base">{p.studentName}</h4>

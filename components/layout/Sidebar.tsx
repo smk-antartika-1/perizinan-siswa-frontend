@@ -76,6 +76,12 @@ const NAV_ITEMS = [
     roles: [UserRole.SECURITY, UserRole.ADMIN],
   },
   {
+    href: "/scan-qr#daftar-scan",
+    label: "Daftar Scan",
+    icon: ClipboardList,
+    roles: [UserRole.SECURITY, UserRole.ADMIN],
+  },
+  {
     href: "/admin",
     label: "Panel Admin",
     icon: Settings,

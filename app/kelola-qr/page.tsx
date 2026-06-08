@@ -5,13 +5,13 @@ import {
   QrCode, Search, Printer, CheckCircle, RefreshCw, 
   Calendar, Clock, AlertTriangle, ShieldCheck, UserCheck 
 } from 'lucide-react';
-import { QRCodeSVG } from 'qrcode.react';
 import AppShell from '@/components/layout/AppShell';
 import { useAppContext } from '@/context/AppContext';
 import { PermissionStatus, UserRole } from '@/lib/types';
-import { formatDate, formatTime, formatDateTime, formatEstimatedReturn, formatEstimatedReturnDateTime, generateQRValue, getDisplayStatus } from '@/lib/utils';
+import { formatDate, formatTime, formatDateTime, formatEstimatedReturn, formatEstimatedReturnDateTime, getDisplayStatus } from '@/lib/utils';
 import { useAuth } from '@/hooks/useAuth';
 import StatusBadge from '@/components/ui/StatusBadge';
+import { SecureQRCode } from '@/components/qr/QRComponents';
 
 export default function KelolaQRPage() {
   const { canAccess } = useAuth();
@@ -215,7 +215,7 @@ export default function KelolaQRPage() {
       {selectedPermissionToPrint && (
         <div className="hidden">
           <div id={`print-qr-${selectedPermissionToPrint.id}`}>
-            <QRCodeSVG value={generateQRValue(selectedPermissionToPrint)} size={150} level="H" />
+            <SecureQRCode permission={selectedPermissionToPrint} size={150} />
           </div>
         </div>
       )}

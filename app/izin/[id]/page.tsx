@@ -18,7 +18,6 @@ import {
   X,
   ShieldCheck,
 } from "lucide-react";
-import { QRCodeSVG } from "qrcode.react";
 import AppShell from "@/components/layout/AppShell";
 import { useAppContext } from "@/context/AppContext";
 import { PermissionStatus, UserRole, STATUS_CONFIG } from "@/lib/types";
@@ -28,12 +27,12 @@ import {
   formatEstimatedReturnDateTime,
   formatTime,
   formatDateTime,
-  generateQRValue,
   getDisplayStatus,
   canApprovePermission,
 } from "@/lib/utils";
 import StatusBadge from "@/components/ui/StatusBadge";
 import { apiRequest } from "@/lib/api";
+import { SecureQRCode } from "@/components/qr/QRComponents";
 
 export default function PermissionDetailPage() {
   const params = useParams();
@@ -399,7 +398,7 @@ export default function PermissionDetailPage() {
       {/* Hidden Print Container specifically targeted by Print CSS / JS */}
       <div ref={printAreaRef} className="hidden">
         <div className="qr-container">
-          <QRCodeSVG value={generateQRValue(permission)} size={160} level="H" />
+          <SecureQRCode permission={permission} size={160} />
         </div>
       </div>
 
@@ -784,11 +783,7 @@ export default function PermissionDetailPage() {
                 </p>
 
                 <div className="p-4 bg-slate-50 rounded-2xl border border-slate-100 my-4">
-                  <QRCodeSVG
-                    value={generateQRValue(permission)}
-                    size={140}
-                    level="H"
-                  />
+                  <SecureQRCode permission={permission} size={140} />
                 </div>
 
                 <h4 className="font-bold text-slate-800 text-sm">

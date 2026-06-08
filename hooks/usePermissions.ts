@@ -13,6 +13,7 @@ export function usePermissions() {
     updatePermission,
     refreshData,
     markReturned,
+    markNoReturn,
   } = useAppContext();
   const { currentUser } = useAuth();
 
@@ -103,6 +104,10 @@ export function usePermissions() {
     await markReturned(id);
   };
 
+  const markNotReturned = async (id: string) => {
+    await markNoReturn(id);
+  };
+
   const activePermission = permissions.find(
     (p) =>
       getDisplayStatus(p) === PermissionStatus.APPROVED_PIKET &&
@@ -121,6 +126,7 @@ export function usePermissions() {
     approveBypassWali,
     reject,
     markCompleted,
+    markNotReturned,
     activePermission,
   };
 }

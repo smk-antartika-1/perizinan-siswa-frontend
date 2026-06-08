@@ -5,7 +5,83 @@ import { motion, AnimatePresence } from "motion/react";
 import { CheckCircle, XCircle, ScanLine, QrCode, Camera } from "lucide-react";
 import { QRCodeSVG } from "qrcode.react";
 import { Permission, PermissionStatus } from "@/lib/types";
-import { generateQRValue, getDisplayStatus } from "@/lib/utils";
+import { getDisplayStatus } from "@/lib/utils";
+import { useAppContext } from "@/context/AppContext";
+
+const qrTokenCache = new Map<string, { qrUrl: string; expiresAt: string }>();
+const qrTokenRequests = new Map<string, Promise<{ qrUrl: string; expiresAt: string }>>();
+
+function hasUsableCachedQr(entry: { expiresAt: string }) {
+  return new Date(entry.expiresAt).getTime() - Date.now() > 30_000;
+}
+
+export function SecureQRCode({
+  permission,
+  size = 180,
+  includeMargin = false,
+}: {
+  permission: Permission;
+  size?: number;
+  includeMargin?: boolean;
+}) {
+  const { generateQr } = useAppContext();
+  const [qrUrl, setQrUrl] = useState(() => {
+    const cached = qrTokenCache.get(permission.id);
+    return cached && hasUsableCachedQr(cached) ? cached.qrUrl : "";
+  });
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadQr() {
+      if (getDisplayStatus(permission) !== PermissionStatus.APPROVED_PIKET) {
+        setQrUrl("");
+        return;
+      }
+
+      const cached = qrTokenCache.get(permission.id);
+      if (cached && hasUsableCachedQr(cached)) {
+        setQrUrl(cached.qrUrl);
+        return;
+      }
+
+      try {
+        setError("");
+        let request = qrTokenRequests.get(permission.id);
+        if (!request) {
+          request = generateQr(permission.id);
+          qrTokenRequests.set(permission.id, request);
+        }
+        const result = await request;
+        qrTokenCache.set(permission.id, result);
+        if (!cancelled) setQrUrl(result.qrUrl);
+      } catch (err: any) {
+        if (!cancelled) setError(err?.message || "QR tidak dapat dibuat");
+      } finally {
+        qrTokenRequests.delete(permission.id);
+      }
+    }
+
+    loadQr();
+    return () => {
+      cancelled = true;
+    };
+  }, [generateQr, permission]);
+
+  if (error || !qrUrl) {
+    return (
+      <div
+        className="flex items-center justify-center rounded-2xl border border-slate-200 bg-slate-50 text-center text-xs font-semibold text-slate-400"
+        style={{ width: size, height: size }}
+      >
+        {error || "Memuat QR..."}
+      </div>
+    );
+  }
+
+  return <QRCodeSVG value={qrUrl} size={size} level="H" includeMargin={includeMargin} />;
+}
 
 // ============================================================
 // QR Generator - generates QR from direct image URL
@@ -14,12 +90,10 @@ export function QRGenerator({ permission }: { permission: Permission }) {
   if (getDisplayStatus(permission) !== PermissionStatus.APPROVED_PIKET)
     return null;
 
-  const qrValue = generateQRValue(permission);
-
   return (
     <div className="flex flex-col items-center gap-4 p-6 bg-white rounded-2xl border border-slate-200">
       <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100">
-        <QRCodeSVG value={qrValue} size={180} level="H" includeMargin />
+        <SecureQRCode permission={permission} size={180} includeMargin />
       </div>
       <div className="text-center">
         <p className="font-bold text-slate-800">{permission.studentName}</p>
@@ -37,8 +111,8 @@ export function QRGenerator({ permission }: { permission: Permission }) {
 // ============================================================
 interface QRScannerProps {
   permissions: Permission[];
-  onScanned: (permission: Permission | null) => void;
-  onMarkComplete: (id: string) => void;
+  onScanned: (qrValue: string) => Promise<Permission | null>;
+  onMarkComplete: (id: string) => void | Promise<void>;
 }
 
 export function QRScanner({
@@ -46,6 +120,7 @@ export function QRScanner({
   onScanned,
   onMarkComplete,
 }: QRScannerProps) {
+  const { generateQr } = useAppContext();
   const [scanning, setScanning] = useState(false);
   const [result, setResult] = useState<"idle" | "success" | "invalid">("idle");
   const [scannedPermission, setScannedPermission] = useState<Permission | null>(
@@ -95,23 +170,15 @@ export function QRScanner({
       const scanner = new Html5Qrcode(scannerId);
       html5QrRef.current = scanner;
 
-      const onScanSuccess = (decodedText: string) => {
-        const perm =
-          permissions.find(
-            (p) =>
-              decodedText.includes(p.id) &&
-              getDisplayStatus(p) === PermissionStatus.APPROVED_PIKET,
-          ) || null;
-
+      const onScanSuccess = async (decodedText: string) => {
+        await stopCamera();
+        const perm = await onScanned(decodedText);
         if (perm) {
           setScannedPermission(perm);
           setResult("success");
-          onScanned(perm);
         } else {
           setResult("invalid");
-          onScanned(null);
         }
-        stopCamera();
       };
 
       const onScanFailure = () => {};
@@ -148,17 +215,21 @@ export function QRScanner({
     setResult("idle");
     setScannedPermission(null);
 
-    setTimeout(() => {
+    setTimeout(async () => {
       const active = permissions.find(
         (p) => getDisplayStatus(p) === PermissionStatus.APPROVED_PIKET,
       );
       if (active) {
-        setScannedPermission(active);
-        setResult("success");
-        onScanned(active);
+        try {
+          const { qrUrl } = await generateQr(active.id);
+          const scanned = await onScanned(qrUrl);
+          setScannedPermission(scanned);
+          setResult(scanned ? "success" : "invalid");
+        } catch {
+          setResult("invalid");
+        }
       } else {
         setResult("invalid");
-        onScanned(null);
       }
       setScanning(false);
     }, 2000);
