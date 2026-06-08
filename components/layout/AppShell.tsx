@@ -8,6 +8,7 @@ import Sidebar from './Sidebar';
 import NotificationDropdown from './NotificationDropdown';
 import { useAuth } from '@/hooks/useAuth';
 import StudentDetailModal from '@/components/ui/StudentDetailModal';
+import { APP_NAME } from '@/lib/appConfig';
 
 const PAGE_TITLES: Record<string, string> = {
   '/dashboard': 'Dashboard',
@@ -43,7 +44,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
   if (!mounted) return null;
   if (!isAuthenticated) return null;
 
-  let pageTitle = PAGE_TITLES[pathname] || 'E-Izin Siswa';
+  let pageTitle = PAGE_TITLES[pathname] || APP_NAME;
   if (pathname.startsWith('/izin/') && pathname !== '/izin') {
     pageTitle = 'Detail Perizinan Siswa';
   }
@@ -57,7 +58,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
 
       {/* Mobile Drawer */}
       {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden">
+        <div className="fixed inset-0 z-layer-drawer lg:hidden">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setMobileOpen(false)} />
           <div className="relative w-72 h-full shadow-2xl">
             <Sidebar onClose={() => setMobileOpen(false)} isMobile />
@@ -68,7 +69,7 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Top Header */}
-        <header className="flex-shrink-0 bg-white border-b border-slate-200 px-4 md:px-8 py-4 flex items-center justify-between">
+        <header className="flex-shrink-0 bg-white border-b border-slate-200 px-4 md:px-8 py-4 flex items-center justify-between z-layer-sticky">
           <div className="flex items-center gap-4">
             <button
               className="lg:hidden p-2 rounded-xl hover:bg-slate-100 text-slate-500"

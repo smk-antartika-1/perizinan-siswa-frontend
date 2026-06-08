@@ -167,9 +167,9 @@ export default function DashboardPage() {
             {/* Info Card */}
             <div className="bg-gradient-to-br from-blue-600 to-blue-800 rounded-2xl p-5 text-white relative overflow-hidden">
               <div className="absolute -right-6 -bottom-6 w-28 h-28 bg-white/10 rounded-full" />
-              <TrendingUp size={24} className="mb-3 relative z-10" />
-              <p className="font-bold relative z-10">Total {stats.total} perizinan</p>
-              <p className="text-blue-100 text-sm mt-1 relative z-10">Tercatat dalam sistem</p>
+              <TrendingUp size={24} className="mb-3 relative z-layer-raised" />
+              <p className="font-bold relative z-layer-raised">Total {stats.total} perizinan</p>
+              <p className="text-blue-100 text-sm mt-1 relative z-layer-raised">Tercatat dalam sistem</p>
             </div>
           </div>
         )}

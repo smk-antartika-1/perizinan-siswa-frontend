@@ -1,6 +1,7 @@
 'use client';
 
 import { AlertTriangle } from 'lucide-react';
+import Portal from './Portal';
 
 interface ConfirmDialogProps {
   isOpen: boolean;
@@ -26,9 +27,10 @@ export default function ConfirmDialog({
   if (!isOpen) return null;
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <Portal>
+    <div className="fixed inset-0 z-layer-modal flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onCancel} />
-      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6">
+      <div className="relative z-layer-raised bg-white rounded-3xl shadow-2xl w-full max-w-sm p-6">
         <div className="flex items-start gap-4 mb-6">
           <div className={`w-12 h-12 rounded-2xl flex items-center justify-center flex-shrink-0 ${
             variant === 'danger' ? 'bg-red-100' : 'bg-blue-100'
@@ -60,5 +62,6 @@ export default function ConfirmDialog({
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

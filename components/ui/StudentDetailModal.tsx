@@ -7,6 +7,7 @@ import { useAppContext } from '@/context/AppContext';
 import { UserRole, PermissionStatus, STATUS_CONFIG } from '@/lib/types';
 import { formatDate, formatEstimatedReturn, formatTime, getDisplayStatus, getPermissionStats } from '@/lib/utils';
 import StatusBadge from '@/components/ui/StatusBadge';
+import Portal from '@/components/ui/Portal';
 
 export default function StudentDetailModal() {
   const router = useRouter();
@@ -49,7 +50,8 @@ export default function StudentDetailModal() {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <Portal>
+    <div className="fixed inset-0 z-layer-modal flex items-center justify-center p-4">
       {/* Backdrop */}
       <div 
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" 
@@ -57,7 +59,7 @@ export default function StudentDetailModal() {
       />
 
       {/* Modal Container */}
-      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto z-10 flex flex-col">
+      <div className="relative bg-white rounded-3xl shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-y-auto z-layer-raised flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-slate-100 flex-shrink-0">
           <div className="flex items-center gap-3">
@@ -237,5 +239,6 @@ export default function StudentDetailModal() {
         </div>
       </div>
     </div>
+    </Portal>
   );
 }

@@ -234,7 +234,7 @@ export function QRScanner({
         {/* Camera view */}
         <div
           id="qr-reader"
-          className={`absolute inset-0 transition-opacity duration-300 ${scanning ? "opacity-100 z-10" : "opacity-0 -z-10"}`}
+          className={`absolute inset-0 transition-opacity duration-300 ${scanning ? "opacity-100 z-layer-raised" : "opacity-0 -z-10"}`}
         />
 
         <AnimatePresence mode="wait">
@@ -243,7 +243,7 @@ export function QRScanner({
               key="result"
               initial={{ scale: 0.8, opacity: 0 }}
               animate={{ scale: 1, opacity: 1 }}
-              className="flex flex-col items-center gap-3 p-6 text-center relative z-10"
+              className="flex flex-col items-center gap-3 p-6 text-center relative z-layer-raised"
             >
               <resultConfig.icon size={56} className={resultConfig.iconColor} />
               <p className={`font-bold text-sm ${resultConfig.textColor}`}>

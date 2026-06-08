@@ -18,6 +18,17 @@
 }
 
 @layer base {
+  :root {
+    --z-base: 0;
+    --z-raised: 10;
+    --z-dropdown-backdrop: 30;
+    --z-dropdown: 40;
+    --z-sticky: 50;
+    --z-drawer: 70;
+    --z-overlay: 80;
+    --z-modal: 90;
+    --z-toast: 100;
+  }
   *, *::before, *::after { box-sizing: border-box; }
   html {
     -webkit-font-smoothing: antialiased;
@@ -32,6 +43,30 @@
 }
 
 @layer components {
+  .z-layer-raised {
+    z-index: var(--z-raised);
+  }
+  .z-layer-dropdown-backdrop {
+    z-index: var(--z-dropdown-backdrop);
+  }
+  .z-layer-dropdown {
+    z-index: var(--z-dropdown);
+  }
+  .z-layer-sticky {
+    z-index: var(--z-sticky);
+  }
+  .z-layer-drawer {
+    z-index: var(--z-drawer);
+  }
+  .z-layer-overlay {
+    z-index: var(--z-overlay);
+  }
+  .z-layer-modal {
+    z-index: var(--z-modal);
+  }
+  .z-layer-toast {
+    z-index: var(--z-toast);
+  }
   .card {
     @apply bg-white rounded-2xl border border-slate-200 shadow-sm;
   }

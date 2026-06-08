@@ -9,6 +9,7 @@ import {
 } from 'lucide-react';
 import { Permission, PermissionStatus, UserRole, STATUS_CONFIG } from '@/lib/types';
 import { formatEstimatedReturn, formatTime, formatDate, getDisplayStatus } from '@/lib/utils';
+import { getPaginationInfo, paginateItems } from '@/lib/pagination';
 import { useAppContext } from '@/context/AppContext';
 import StatusBadge from '@/components/ui/StatusBadge';
 
@@ -107,8 +108,8 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
   });
 
   // Paginate sorted data
-  const paginated = sorted.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  const totalPages = Math.ceil(sorted.length / pageSize) || 1;
+  const pageInfo = getPaginationInfo(sorted.length, pageSize, currentPage);
+  const paginated = paginateItems(sorted, pageSize, currentPage);
 
   // Toggle sort order
   const handleSort = (column: 'studentName' | 'departureTime') => {
@@ -416,8 +417,8 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
 
             {showVisibilityDropdown && (
               <>
-                <div className="fixed inset-0 z-10" onClick={() => setShowVisibilityDropdown(false)} />
-                <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl border border-slate-250 shadow-xl p-3 space-y-2 z-20">
+                <div className="fixed inset-0 z-layer-dropdown-backdrop" onClick={() => setShowVisibilityDropdown(false)} />
+                <div className="absolute right-0 mt-2 w-52 bg-white rounded-2xl border border-slate-250 shadow-xl p-3 space-y-2 z-layer-dropdown">
                   <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest px-2 pb-1 border-b border-slate-100">Pilih Kolom Tampil</p>
                   
                   {([
@@ -520,9 +521,29 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
 
       {/* Main Table Content Panel */}
       <div className="bg-white rounded-3xl border border-slate-200 overflow-hidden shadow-sm">
-        {groupByClass ? (
+        {sorted.length === 0 ? (
+          <div className="px-4 py-16 text-center">
+            <div className="max-w-md mx-auto flex flex-col items-center gap-3">
+              <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-350 mb-1">
+                <SlidersHorizontal size={24} className="opacity-40" />
+              </div>
+              <h4 className="font-bold text-slate-800 text-sm">Tidak Ada Perizinan Ditemukan</h4>
+              <p className="text-xs text-slate-400 leading-relaxed">
+                Tidak ada data perizinan yang sesuai dengan filter pencarian Anda. Coba hapus kata kunci pencarian atau ubah rentang tanggal.
+              </p>
+              {hasActiveFilters && (
+                <button
+                  onClick={resetFilters}
+                  className="btn-secondary text-xs px-4 py-2 mt-1 rounded-xl"
+                >
+                  Hapus Semua Filter
+                </button>
+              )}
+            </div>
+          </div>
+        ) : groupByClass ? (
           // Grouped by Kelas layout option
-          Object.entries(groupByKelas(sorted)).map(([kelas, items]) => {
+          Object.entries(groupByKelas(paginated)).map(([kelas, items]) => {
             const isOpen = openGroups[kelas] !== false; // default open
             return (
               <div key={kelas} className="border-b border-slate-100 last:border-b-0">
@@ -595,33 +616,8 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
               <tbody className="divide-y divide-slate-100">
                 {isTableLoading ? (
                   renderSkeletons()
-                ) : paginated.length > 0 ? (
-                  paginated.map(renderRow)
                 ) : (
-                  <tr>
-                    <td 
-                      colSpan={Object.values(columnVisibility).filter(Boolean).length} 
-                      className="px-4 py-16 text-center"
-                    >
-                      <div className="max-w-md mx-auto flex flex-col items-center gap-3">
-                        <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-350 mb-1">
-                          <SlidersHorizontal size={24} className="opacity-40" />
-                        </div>
-                        <h4 className="font-bold text-slate-800 text-sm">Tidak Ada Perizinan Ditemukan</h4>
-                        <p className="text-xs text-slate-400 leading-relaxed">
-                          Tidak ada data perizinan yang sesuai dengan filter pencarian Anda. Coba hapus kata kunci pencarian atau ubah rentang tanggal.
-                        </p>
-                        {hasActiveFilters && (
-                          <button
-                            onClick={resetFilters}
-                            className="btn-secondary text-xs px-4 py-2 mt-1 rounded-xl"
-                          >
-                            Hapus Semua Filter
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
+                  paginated.map(renderRow)
                 )}
               </tbody>
             </table>
@@ -629,7 +625,6 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
         )}
 
         {/* Paginated Footer Area */}
-        {!groupByClass && sorted.length > 0 && (
           <div className="p-4 border-t border-slate-150 bg-slate-50/50 flex flex-col sm:flex-row gap-3 items-center justify-between">
             <div className="flex items-center gap-2">
               <span className="text-xs text-slate-400 font-semibold">Tampilkan baris:</span>
@@ -644,14 +639,14 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
                 <option value={50}>50</option>
               </select>
               <span className="text-xs text-slate-400 font-semibold font-mono ml-3">
-                Menampilkan {Math.min(sorted.length, (currentPage - 1) * pageSize + 1)}-{Math.min(sorted.length, currentPage * pageSize)} dari {sorted.length} perizinan
+                Menampilkan {pageInfo.startItem}-{pageInfo.endItem} dari {pageInfo.totalItems} perizinan
               </span>
             </div>
 
             {/* Pagination Controls */}
             <div className="flex items-center gap-1.5">
               <button
-                disabled={currentPage === 1 || isTableLoading}
+                disabled={pageInfo.currentPage === 1 || isTableLoading}
                 onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
                 className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-blue-600 disabled:opacity-40 disabled:hover:text-slate-500 transition-colors"
                 title="Halaman Sebelumnya"
@@ -659,11 +654,11 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
                 <ChevronLeft size={16} />
               </button>
               
-              {[...Array(totalPages)].map((_, idx) => {
+              {[...Array(pageInfo.totalPages)].map((_, idx) => {
                 const pageNum = idx + 1;
                 // Render limited pages if total pages is large
-                if (totalPages > 5 && Math.abs(pageNum - currentPage) > 2 && pageNum !== 1 && pageNum !== totalPages) {
-                  if (pageNum === 2 || pageNum === totalPages - 1) {
+                if (pageInfo.totalPages > 5 && Math.abs(pageNum - pageInfo.currentPage) > 2 && pageNum !== 1 && pageNum !== pageInfo.totalPages) {
+                  if (pageNum === 2 || pageNum === pageInfo.totalPages - 1) {
                     return <span key={pageNum} className="text-slate-300 text-xs px-1 select-none">...</span>;
                   }
                   return null;
@@ -675,7 +670,7 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
                     disabled={isTableLoading}
                     onClick={() => setCurrentPage(pageNum)}
                     className={`w-7 h-7 rounded-lg text-xs font-bold font-mono transition-all ${
-                      currentPage === pageNum
+                      pageInfo.currentPage === pageNum
                         ? 'bg-blue-600 text-white shadow-sm shadow-blue-500/20'
                         : 'bg-white border border-slate-200 text-slate-500 hover:border-blue-300 hover:text-blue-600'
                     }`}
@@ -686,8 +681,8 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
               })}
 
               <button
-                disabled={currentPage === totalPages || isTableLoading}
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                disabled={pageInfo.currentPage === pageInfo.totalPages || isTableLoading}
+                onClick={() => setCurrentPage(prev => Math.min(pageInfo.totalPages, prev + 1))}
                 className="p-1.5 rounded-lg border border-slate-200 bg-white text-slate-500 hover:text-blue-600 disabled:opacity-40 disabled:hover:text-slate-500 transition-colors"
                 title="Halaman Berikutnya"
               >
@@ -695,7 +690,6 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
               </button>
             </div>
           </div>
-        )}
       </div>
     </div>
   );

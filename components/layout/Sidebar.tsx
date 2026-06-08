@@ -19,6 +19,7 @@ import {
 import { UserRole, ROLE_LABELS } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
 import ConfirmDialog from "@/components/ui/ConfirmDialog";
+import { APP_NAME } from "@/lib/appConfig";
 
 const NAV_ITEMS = [
   {
@@ -122,7 +123,7 @@ export default function Sidebar({ onClose, isMobile = false }: SidebarProps) {
             </div>
             <div>
               <h1 className="font-bold text-slate-800 leading-tight">
-                E-Izin Siswa
+                {APP_NAME}
               </h1>
               <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">
                 Sistem Perizinan

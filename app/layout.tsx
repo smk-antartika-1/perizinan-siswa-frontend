@@ -4,14 +4,15 @@ import { AppProvider } from '@/context/AppContext';
 
 import PWAInstallPrompt from '@/components/ui/PWAInstallPrompt';
 import GlobalToasts from '@/components/ui/GlobalToasts';
+import { APP_DESCRIPTION, APP_NAME, APP_TAGLINE } from '@/lib/appConfig';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'E-Izin Siswa - Sistem Perizinan Digital',
-  description: 'Sistem perizinan keluar-masuk siswa berbasis QR Code untuk sekolah.',
+  title: `${APP_NAME} - ${APP_TAGLINE}`,
+  description: APP_DESCRIPTION,
   icons: { icon: '/icons/icon-192.png', apple: '/icons/icon-192.png' },
-  manifest: '/manifest.json',
+  manifest: '/manifest.webmanifest',
 };
 
 export const viewport: Viewport = {

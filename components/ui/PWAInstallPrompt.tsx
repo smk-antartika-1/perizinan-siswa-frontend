@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Download, Share } from 'lucide-react';
+import { APP_NAME, APP_SHORT_NAME } from '@/lib/appConfig';
 
 interface BeforeInstallPromptEvent extends Event {
   readonly platforms: string[];
@@ -82,7 +83,7 @@ export default function PWAInstallPrompt() {
         animate={{ y: 0, opacity: 1 }}
         exit={{ y: 150, opacity: 0 }}
         transition={{ type: 'spring', bounce: 0.2, duration: 0.6 }}
-        className="fixed bottom-4 left-4 right-4 md:left-auto md:right-8 md:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 z-50 flex flex-col gap-3"
+        className="fixed bottom-4 left-4 right-4 md:left-auto md:right-8 md:w-96 bg-white rounded-2xl shadow-2xl border border-slate-100 p-4 z-layer-overlay flex flex-col gap-3"
       >
         <button 
           onClick={handleDismiss}
@@ -93,10 +94,10 @@ export default function PWAInstallPrompt() {
 
         <div className="flex items-start gap-4">
           <div className="w-12 h-12 bg-blue-600 rounded-xl flex items-center justify-center flex-shrink-0 shadow-lg shadow-blue-500/20">
-            <img src="/icons/icon-192.png" alt="E-Izin" className="w-8 h-8 rounded-md" />
+            <img src="/icons/icon-192.png" alt={APP_SHORT_NAME} className="w-8 h-8 rounded-md" />
           </div>
           <div className="flex-1 pr-6">
-            <h4 className="font-bold text-slate-800 text-sm">Install E-Izin Siswa</h4>
+            <h4 className="font-bold text-slate-800 text-sm">Install {APP_NAME}</h4>
             <p className="text-xs text-slate-500 mt-1 leading-relaxed">
               Install aplikasi ini di layar utama Anda untuk akses lebih cepat dan penggunaan offline.
             </p>

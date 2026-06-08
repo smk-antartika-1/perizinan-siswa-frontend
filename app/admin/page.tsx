@@ -29,6 +29,7 @@ import {
   GraduationCap,
 } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
+import Portal from "@/components/ui/Portal";
 import {
   useAppContext,
   type AdminUserStats,
@@ -36,6 +37,7 @@ import {
 } from "@/context/AppContext";
 import { ApiError } from "@/lib/api";
 import { UserRole, ROLE_LABELS, User } from "@/lib/types";
+import { APP_SHORT_NAME } from "@/lib/appConfig";
 
 type Tab = "import" | "users" | "classes";
 type RoleFilter = "all" | UserRole;
@@ -585,7 +587,7 @@ export default function AdminPage() {
       {/* Page Header */}
       <div className="page-header flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="page-title">Panel Administrasi (E-Izin)</h1>
+          <h1 className="page-title">Panel Administrasi ({APP_SHORT_NAME})</h1>
           <p className="page-subtitle">
             Pusat kelola data pengguna sistem, otorisasi peran, dan import
             berkas Excel.
@@ -615,7 +617,7 @@ export default function AdminPage() {
                   />
                 </button>
                 {exportDropdownOpen && (
-                  <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl z-20 overflow-hidden animate-fadeIn">
+                  <div className="absolute right-0 top-full mt-1 w-52 bg-white border border-slate-200 rounded-2xl shadow-xl z-layer-dropdown overflow-hidden animate-fadeIn">
                     <div className="px-3 py-2 border-b border-slate-100">
                       <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
                         Ekspor berdasarkan peran
@@ -1381,9 +1383,10 @@ export default function AdminPage() {
 
       {/* ── MODAL: Add Class ── */}
       {isAddClassModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <Portal>
+        <div className="fixed inset-0 z-layer-modal flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsAddClassModalOpen(false)} />
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-sm z-10 overflow-hidden">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-sm z-layer-raised overflow-hidden">
             <div className="flex items-center justify-between p-5 border-b border-slate-100">
               <div className="flex items-center gap-2 text-indigo-600">
                 <GraduationCap size={18} />
@@ -1425,13 +1428,15 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
 
       {/* ── MODAL: Edit Class ── */}
       {isEditClassModalOpen && selectedClass && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <Portal>
+        <div className="fixed inset-0 z-layer-modal flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsEditClassModalOpen(false)} />
-          <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-sm z-10 overflow-hidden">
+          <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-sm z-layer-raised overflow-hidden">
             <div className="flex items-center justify-between p-5 border-b border-slate-100">
               <div className="flex items-center gap-2 text-blue-600">
                 <Edit2 size={16} />
@@ -1472,13 +1477,15 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
 
       {/* ── MODAL: Delete Class ── */}
       {isDeleteClassModalOpen && selectedClass && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <Portal>
+        <div className="fixed inset-0 z-layer-modal flex items-center justify-center p-4">
           <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={() => setIsDeleteClassModalOpen(false)} />
-          <div className="bg-white rounded-3xl border border-slate-150 shadow-2xl w-full max-w-md z-10 p-6 space-y-4">
+          <div className="bg-white rounded-3xl border border-slate-150 shadow-2xl w-full max-w-md z-layer-raised p-6 space-y-4">
             <div className="flex items-center gap-3 text-red-600">
               <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center border border-red-100">
                 <ShieldAlert size={20} />
@@ -1516,6 +1523,7 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
 
       {/* ── MODAL: Add User ── */}
@@ -1588,12 +1596,13 @@ export default function AdminPage() {
 
       {/* ── MODAL: Delete Confirm ── */}
       {isDeleteModalOpen && selectedUser && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        <Portal>
+        <div className="fixed inset-0 z-layer-modal flex items-center justify-center p-4">
           <div
             className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
             onClick={() => setIsDeleteModalOpen(false)}
           />
-          <div className="bg-white rounded-3xl border border-slate-150 shadow-2xl w-full max-w-md z-10 p-6 space-y-4">
+          <div className="bg-white rounded-3xl border border-slate-150 shadow-2xl w-full max-w-md z-layer-raised p-6 space-y-4">
             <div className="flex items-center gap-3 text-red-600">
               <div className="w-10 h-10 bg-red-50 rounded-xl flex items-center justify-center border border-red-100">
                 <ShieldAlert size={20} />
@@ -1629,6 +1638,7 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+        </Portal>
       )}
     </AppShell>
   );
@@ -1709,12 +1719,13 @@ function UserFormModal({
   );
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <Portal>
+    <div className="fixed inset-0 z-layer-modal flex items-center justify-center p-4">
       <div
         className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm animate-fadeIn"
         onClick={onClose}
       />
-      <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-lg z-10 overflow-hidden flex flex-col animate-slideUp">
+      <div className="bg-white rounded-3xl border border-slate-100 shadow-2xl w-full max-w-lg z-layer-raised overflow-hidden flex flex-col animate-slideUp">
         <div className="flex items-center justify-between p-5 border-b border-slate-100">
           <div className="flex items-center gap-2 text-blue-600">
             {icon}
@@ -1909,5 +1920,6 @@ function UserFormModal({
         </form>
       </div>
     </div>
+    </Portal>
   );
 }

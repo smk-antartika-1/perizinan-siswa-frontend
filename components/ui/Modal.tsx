@@ -2,6 +2,7 @@
 
 import { useEffect } from 'react';
 import { X, CheckCircle, AlertCircle, Info } from 'lucide-react';
+import Portal from './Portal';
 
 interface ModalProps {
   isOpen: boolean;
@@ -23,9 +24,10 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
   const sizeClass = { sm: 'max-w-sm', md: 'max-w-lg', lg: 'max-w-2xl' }[size];
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <Portal>
+    <div className="fixed inset-0 z-layer-modal flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose} />
-      <div className={`relative bg-white rounded-3xl shadow-2xl w-full ${sizeClass} max-h-[90vh] overflow-y-auto`}>
+      <div className={`relative z-layer-raised bg-white rounded-3xl shadow-2xl w-full ${sizeClass} max-h-[90vh] overflow-y-auto`}>
         <div className="flex items-center justify-between p-6 border-b border-slate-100">
           <h2 className="text-lg font-bold text-slate-800">{title}</h2>
           <button onClick={onClose} className="p-2 rounded-xl hover:bg-slate-100 transition-colors text-slate-500">
@@ -35,6 +37,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' }:
         <div className="p-6">{children}</div>
       </div>
     </div>
+    </Portal>
   );
 }
 
@@ -71,8 +74,10 @@ interface ToastContainerProps {
 export function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
   if (!toasts.length) return null;
   return (
-    <div className="fixed bottom-6 right-6 z-[100] flex flex-col gap-2">
+    <Portal>
+    <div className="fixed bottom-6 right-6 z-layer-toast flex flex-col gap-2">
       {toasts.map(t => <Toast key={t.id} message={t.message} type={t.type} onClose={() => onRemove(t.id)} />)}
     </div>
+    </Portal>
   );
 }

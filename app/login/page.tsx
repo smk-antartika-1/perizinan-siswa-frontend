@@ -6,6 +6,7 @@ import { motion } from "motion/react";
 import { QrCode, ShieldCheck, Lock, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useAppContext } from "@/context/AppContext";
+import { APP_NAME, APP_TAGLINE, COPYRIGHT_TEXT } from "@/lib/appConfig";
 
 export default function LoginPage() {
   const { login, isAuthenticated } = useAuth();
@@ -42,7 +43,7 @@ export default function LoginPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-blue-400/10 rounded-full blur-[80px]" />
       </div>
 
-      <div className="relative z-10 w-full max-w-md">
+      <div className="relative z-layer-raised w-full max-w-md">
         {/* Logo & Title */}
         <motion.div
           initial={{ opacity: 0, y: -20 }}
@@ -52,8 +53,8 @@ export default function LoginPage() {
           <div className="w-20 h-20 bg-gradient-to-br from-blue-600 to-blue-800 rounded-3xl mx-auto mb-5 flex items-center justify-center shadow-2xl shadow-blue-500/40 border border-blue-500/30">
             <QrCode className="text-white" size={38} />
           </div>
-          <h1 className="text-3xl font-bold text-white mb-2">E-Izin Siswa</h1>
-          <p className="text-slate-400 text-sm">Sistem Perizinan Digital</p>
+          <h1 className="text-3xl font-bold text-white mb-2">{APP_NAME}</h1>
+          <p className="text-slate-400 text-sm">{APP_TAGLINE}</p>
         </motion.div>
 
         {/* Login Card */}
@@ -133,17 +134,20 @@ export default function LoginPage() {
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ delay: 0.6 }}
-          className="flex items-center justify-center gap-4 mt-6 text-xs text-slate-600"
+          className="mt-6 text-xs text-slate-600"
         >
-          <div className="flex items-center gap-1.5">
-            <ShieldCheck size={12} />
-            Aman dan Terenkripsi
+          <div className="flex items-center justify-center gap-4">
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck size={12} />
+              Aman dan Terenkripsi
+            </div>
+            <span>|</span>
+            <div className="flex items-center gap-1.5">
+              <QrCode size={12} />
+              Validasi QR Code
+            </div>
           </div>
-          <span>|</span>
-          <div className="flex items-center gap-1.5">
-            <QrCode size={12} />
-            Validasi QR Code
-          </div>
+          <p className="mt-3 text-center text-[11px] text-slate-500">{COPYRIGHT_TEXT}</p>
         </motion.div>
       </div>
     </div>

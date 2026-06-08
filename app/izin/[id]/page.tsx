@@ -582,7 +582,7 @@ export default function PermissionDetailPage() {
                     className="relative md:flex-1 flex md:flex-col items-start md:items-center text-left md:text-center group"
                   >
                     {/* Stepper Dot */}
-                    <div className="flex items-center justify-center flex-shrink-0 z-10">
+                    <div className="flex items-center justify-center flex-shrink-0 z-layer-raised">
                       {isStepRejected ? (
                         <div className="w-6 h-6 rounded-full bg-red-100 border-2 border-red-500 flex items-center justify-center text-red-500 shadow-md">
                           <X size={12} className="stroke-[3px]" />
