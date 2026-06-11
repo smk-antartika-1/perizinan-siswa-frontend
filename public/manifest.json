@@ -1,6 +1,6 @@
 {
-  "name": "E-Izin Siswa",
-  "short_name": "E-Izin",
+  "name": "SIPAS Antartika",
+  "short_name": "SIPAS",
   "description": "Sistem Perizinan Keluar Masuk Siswa berbasis QR Code",
   "start_url": "/login",
   "display": "standalone",
