@@ -1,3 +1,4 @@
+import { API_BASE_URL } from "./config";
 import { Permission, PermissionStatus, UserRole } from "./types";
 
 export function getPermissionExpiry(permission: Permission): Date | null {
@@ -168,8 +169,7 @@ export function getPermissionStats(permissions: Permission[]) {
  */
 export function generateQRValue(permission: Permission): string {
   if (permission.suratUrl) return permission.suratUrl;
-  const apiBaseUrl = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-  return `${apiBaseUrl}/api/v1/permissions/${permission.id}/surat`;
+  return `${API_BASE_URL}/api/v1/permissions/${permission.id}/surat`;
 }
 
 export function cn(...classes: (string | undefined | null | false)[]): string {
