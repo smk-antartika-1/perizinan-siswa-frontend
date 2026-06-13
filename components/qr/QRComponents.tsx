@@ -247,13 +247,18 @@ export function QRScanner({
 
       const config = {
         fps: 10,
-        qrbox: { width: 220, height: 220 },
+        qrbox: (viewfinderWidth: number, viewfinderHeight: number) => {
+          const minEdge = Math.min(viewfinderWidth, viewfinderHeight);
+          const qrboxSize = Math.floor(minEdge * 0.75);
+          return {
+            width: qrboxSize,
+            height: qrboxSize,
+          };
+        },
         aspectRatio: 1.0,
         disableFlip: false,
         videoConstraints: {
           facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
         },
       };
 

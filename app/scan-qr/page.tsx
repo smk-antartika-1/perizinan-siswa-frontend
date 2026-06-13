@@ -98,7 +98,7 @@ export default function ScanQRPage() {
     );
   }
 
-  const handleScanned = async (qrValue: string) => {
+  const handleScanned = useCallback(async (qrValue: string) => {
     const scanPath = getScanApiPath(qrValue);
     if (!scanPath) {
       showToast('QR Code tidak valid atau tidak dikenali sistem.', 'error');
@@ -114,7 +114,18 @@ export default function ScanQRPage() {
       showToast(err?.message || 'QR Code tidak valid atau sudah kedaluwarsa.', 'error');
       return null;
     }
-  };
+  }, [showToast, loadScannedPermissions]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const urlParams = new URLSearchParams(window.location.search);
+    const token = urlParams.get('token');
+    if (token) {
+      const newUrl = window.location.pathname;
+      window.history.replaceState({}, document.title, newUrl);
+      handleScanned(`/api/v1/security/scan/${token}`);
+    }
+  }, [handleScanned]);
 
   const handleMarkComplete = async (id: string) => {
     setUpdatingId(id);
