@@ -12,6 +12,12 @@ export class ApiError extends Error {
 
 type RequestOptions = RequestInit & { skipAuth?: boolean };
 
+let onUnauthenticated: (() => void) | null = null;
+
+export function setOnUnauthenticated(callback: () => void) {
+  onUnauthenticated = callback;
+}
+
 function buildRequestOptions(options: RequestOptions) {
   const headers = new Headers(options.headers);
   const isFormData = options.body instanceof FormData;
@@ -65,6 +71,10 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
 
     if (refreshRes.ok) {
       res = await fetch(`${API_BASE_URL}${path}`, requestOptions);
+    } else {
+      // Refresh token gagal — session benar-benar expired, notifikasi handler global
+      if (onUnauthenticated) onUnauthenticated();
+      throw new ApiError('Sesi berakhir. Silakan login kembali.', 401);
     }
   }
 

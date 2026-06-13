@@ -2,11 +2,12 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter, usePathname } from 'next/navigation';
-import { Menu } from 'lucide-react';
+import { Menu, Loader2 } from 'lucide-react';
 import Link from 'next/link';
 import Sidebar from './Sidebar';
 import NotificationDropdown from './NotificationDropdown';
 import { useAuth } from '@/hooks/useAuth';
+import { useAppContext } from '@/context/AppContext';
 import StudentDetailModal from '@/components/ui/StudentDetailModal';
 import { APP_NAME } from '@/lib/appConfig';
 
@@ -23,25 +24,45 @@ const PAGE_TITLES: Record<string, string> = {
   '/kelola-qr': 'Kelola QR Code',
 };
 
+// Layar loading penuh — ditampilkan saat auth sedang divalidasi
+function AuthLoadingScreen() {
+  return (
+    <div className="fixed inset-0 bg-slate-900 flex flex-col items-center justify-center gap-4 z-50">
+      <div className="w-16 h-16 bg-gradient-to-br from-blue-600 to-blue-800 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-500/40 border border-blue-500/30">
+        <svg viewBox="0 0 24 24" className="w-8 h-8 text-white fill-none stroke-current stroke-2">
+          <rect x="3" y="3" width="7" height="7" rx="1" />
+          <rect x="14" y="3" width="7" height="7" rx="1" />
+          <rect x="3" y="14" width="7" height="7" rx="1" />
+          <path d="M14 14h2v2h-2zM18 14h3v2h-3zM14 18h3v2h-3zM18 18h3v3h-3z" />
+        </svg>
+      </div>
+      <div className="flex items-center gap-2 text-slate-400">
+        <Loader2 size={16} className="animate-spin text-blue-400" />
+        <span className="text-sm font-medium">Memuat sesi...</span>
+      </div>
+    </div>
+  );
+}
+
 export default function AppShell({ children }: { children: React.ReactNode }) {
-  const [mounted, setMounted] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
   const { isAuthenticated, currentUser } = useAuth();
+  const { isInitializing } = useAppContext();
   const router = useRouter();
   const pathname = usePathname();
 
   useEffect(() => {
-    setMounted(true);
-  }, []);
-
-  useEffect(() => {
-    if (mounted && !isAuthenticated && pathname !== '/login') {
+    // Hanya redirect setelah initial auth check selesai
+    if (!isInitializing && !isAuthenticated && pathname !== '/login') {
       router.push('/login');
     }
-  }, [isAuthenticated, pathname, router, mounted]);
+  }, [isAuthenticated, pathname, router, isInitializing]);
 
-  // To prevent hydration mismatch, only render after mounting on the client
-  if (!mounted) return null;
+  // Selama session sedang divalidasi, tampilkan loading screen
+  if (isInitializing) return <AuthLoadingScreen />;
+
+  // Jika tidak terautentikasi setelah check selesai, jangan render apapun
+  // (redirect sudah ditangani oleh useEffect + middleware)
   if (!isAuthenticated) return null;
 
   let pageTitle = PAGE_TITLES[pathname] || APP_NAME;
@@ -105,3 +126,4 @@ export default function AppShell({ children }: { children: React.ReactNode }) {
     </div>
   );
 }
+

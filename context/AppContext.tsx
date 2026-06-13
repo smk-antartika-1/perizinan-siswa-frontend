@@ -8,7 +8,8 @@ import React, {
   useEffect,
   useRef,
 } from "react";
-import { apiDownload, apiRequest, clearAuthSession } from "@/lib/api";
+import { useRouter } from "next/navigation";
+import { apiDownload, apiRequest, clearAuthSession, setOnUnauthenticated } from "@/lib/api";
 import { User, Permission, Notification, UserRole, SchoolClass } from "@/lib/types";
 
 interface Toast {
@@ -65,6 +66,7 @@ interface AppContextType {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => Promise<void>;
   isAuthenticated: boolean;
+  isInitializing: boolean;
   refreshData: () => Promise<void>;
   changePassword: (
     oldPassword: string,
@@ -164,24 +166,29 @@ async function downloadResponse(res: Response, fallback: string) {
 }
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
+  const router = useRouter();
   const [users, setUsers] = useState<User[]>([]);
   const [currentUser, setCurrentUser] = useState<User | null>(() =>
     getStoredUser(),
   );
+  const [isInitializing, setIsInitializing] = useState(true);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [activeStudentNis, setActiveStudentNis] = useState<string | null>(null);
   const [classes, setClasses] = useState<SchoolClass[]>([]);
   const authEpochRef = useRef(0);
+  const isHandlingUnauthRef = useRef(false);
 
   const showToast = useCallback(
     (message: string, type: Toast["type"] = "success") => {
       const id = Math.random().toString(36).slice(2);
       setToasts((prev) => [...prev, { id, message, type }]);
+      // Error toasts lebih lama supaya user sempat membaca di mobile
+      const duration = type === "error" ? 5000 : 4000;
       setTimeout(
         () => setToasts((prev) => prev.filter((t) => t.id !== id)),
-        3500,
+        duration,
       );
     },
     [],
@@ -255,18 +262,54 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     loadStudentsByClass,
   ]);
 
+  // Daftarkan global handler saat session expired (refresh token gagal)
   useEffect(() => {
-    const epoch = authEpochRef.current;
-    refreshData().catch(() => {
-      if (authEpochRef.current !== epoch) return;
+    setOnUnauthenticated(() => {
+      if (isHandlingUnauthRef.current) return;
+      isHandlingUnauthRef.current = true;
+      // Bersihkan semua state session
       storeUser(null);
       setCurrentUser(null);
+      setUsers([]);
+      setClasses([]);
+      setPermissions([]);
+      setNotifications([]);
+      setIsInitializing(false);
+      // Tampilkan toast lalu redirect ke login
+      setToasts((prev) => [
+        ...prev,
+        {
+          id: `session-expired-${Date.now()}`,
+          message: 'Sesi berakhir. Silakan login kembali.',
+          type: 'error' as const,
+        },
+      ]);
+      router.push('/login');
+      // Reset flag setelah navigasi
+      setTimeout(() => { isHandlingUnauthRef.current = false; }, 3000);
     });
-  }, [refreshData]);
+  }, [router]);
+
+  // Initial auth check — coba fetch profile untuk memvalidasi session
+  useEffect(() => {
+    const epoch = authEpochRef.current;
+    setIsInitializing(true);
+    refreshData()
+      .catch(() => {
+        if (authEpochRef.current !== epoch) return;
+        storeUser(null);
+        setCurrentUser(null);
+      })
+      .finally(() => {
+        if (authEpochRef.current === epoch) setIsInitializing(false);
+      });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const login = useCallback(
     async (username: string, password: string) => {
       authEpochRef.current += 1;
+      setIsInitializing(false); // login eksplisit, tidak perlu initializing
       try {
         await clearAuthSession();
         const data = await apiRequest<{
@@ -302,6 +345,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setClasses([]);
     setPermissions([]);
     setNotifications([]);
+    setIsInitializing(false);
   }, []);
 
   const addUser = useCallback(async (user: Omit<User, "id">) => {
@@ -558,6 +602,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         login,
         logout,
         isAuthenticated: !!currentUser,
+        isInitializing,
         refreshData,
         changePassword,
         updateProfile,

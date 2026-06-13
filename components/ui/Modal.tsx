@@ -57,10 +57,12 @@ export function Toast({ message, type, onClose }: ToastProps) {
   };
   const Icon = icons[type];
   return (
-    <div className={`flex items-center gap-3 px-4 py-3 rounded-2xl border shadow-lg ${colors[type]}`}>
-      <Icon size={18} />
-      <span className="text-sm font-medium">{message}</span>
-      <button onClick={onClose} className="ml-2 opacity-60 hover:opacity-100"><X size={14} /></button>
+    <div className={`flex items-start gap-3 px-4 py-3.5 rounded-2xl border shadow-xl max-w-sm w-full ${colors[type]}`}>
+      <Icon size={18} className="flex-shrink-0 mt-0.5" />
+      <span className="text-sm font-medium flex-1 leading-relaxed">{message}</span>
+      <button onClick={onClose} className="flex-shrink-0 opacity-60 hover:opacity-100 mt-0.5">
+        <X size={14} />
+      </button>
     </div>
   );
 }
@@ -75,9 +77,10 @@ export function ToastContainer({ toasts, onRemove }: ToastContainerProps) {
   if (!toasts.length) return null;
   return (
     <Portal>
-    <div className="fixed bottom-6 right-6 z-layer-toast flex flex-col gap-2">
-      {toasts.map(t => <Toast key={t.id} message={t.message} type={t.type} onClose={() => onRemove(t.id)} />)}
-    </div>
+      {/* Mobile: bottom-center, Desktop: bottom-right */}
+      <div className="fixed bottom-4 left-4 right-4 sm:left-auto sm:right-6 sm:bottom-6 z-layer-toast flex flex-col gap-2 items-stretch sm:items-end">
+        {toasts.map(t => <Toast key={t.id} message={t.message} type={t.type} onClose={() => onRemove(t.id)} />)}
+      </div>
     </Portal>
   );
 }
