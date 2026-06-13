@@ -320,6 +320,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setCurrentUser(null);
         if (typeof window !== "undefined") {
           document.cookie = "logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
         }
       })
       .finally(() => {
@@ -336,6 +338,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         await clearAuthSession();
         const data = await apiRequest<{
           user: User;
+          accessToken?: string;
+          refreshToken?: string;
         }>("/api/v1/auth/login", {
           method: "POST",
           skipAuth: true,
@@ -348,6 +352,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         storeUser(profile);
         if (typeof window !== "undefined") {
           document.cookie = "logged_in=true; path=/; max-age=31536000; SameSite=Lax; Secure";
+          if (data.accessToken) localStorage.setItem('access_token', data.accessToken);
+          if (data.refreshToken) localStorage.setItem('refresh_token', data.refreshToken);
         }
         authEpochRef.current += 1;
         await refreshData().catch(() => undefined);
@@ -357,6 +363,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         setCurrentUser(null);
         if (typeof window !== "undefined") {
           document.cookie = "logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
         }
         return false;
       }
@@ -376,6 +384,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIsInitializing(false);
     if (typeof window !== "undefined") {
       document.cookie = "logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      localStorage.removeItem('access_token');
+      localStorage.removeItem('refresh_token');
     }
   }, []);
 

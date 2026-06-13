@@ -26,6 +26,14 @@ function buildRequestOptions(options: RequestOptions) {
     headers.set('Content-Type', 'application/json');
   }
 
+  // Tambahkan Authorization header jika token ada di localStorage (untuk mobile/cross-origin Safari)
+  if (typeof window !== 'undefined') {
+    const token = localStorage.getItem('access_token');
+    if (token && !headers.has('Authorization')) {
+      headers.set('Authorization', `Bearer ${token}`);
+    }
+  }
+
   return {
     ...options,
     headers,
@@ -53,10 +61,32 @@ async function parseResponse<T>(res: Response): Promise<T> {
 }
 
 export async function clearAuthSession(): Promise<void> {
-  await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
-    method: 'POST',
-    credentials: 'include',
-  }).catch(() => undefined);
+  if (typeof window !== 'undefined') {
+    const localRefreshToken = localStorage.getItem('refresh_token');
+    
+    let logoutBody: string | undefined = undefined;
+    const logoutHeaders = new Headers();
+    if (localRefreshToken) {
+      logoutHeaders.set('Content-Type', 'application/json');
+      logoutBody = JSON.stringify({ refreshToken: localRefreshToken });
+    }
+    
+    // Kirim request logout dengan body refresh token agar di-revoked di database
+    await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+      method: 'POST',
+      headers: logoutHeaders,
+      body: logoutBody,
+      credentials: 'include',
+    }).catch(() => undefined);
+
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+  } else {
+    await fetch(`${API_BASE_URL}/api/v1/auth/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    }).catch(() => undefined);
+  }
 }
 
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
@@ -64,15 +94,38 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   let res = await fetch(`${API_BASE_URL}${path}`, requestOptions);
 
   if (res.status === 401 && !options.skipAuth && path !== '/api/v1/auth/refresh') {
+    const localRefreshToken = typeof window !== 'undefined' ? localStorage.getItem('refresh_token') : null;
+    
+    const refreshHeaders = new Headers();
+    let refreshBody: string | undefined = undefined;
+    
+    if (localRefreshToken) {
+      refreshHeaders.set('Content-Type', 'application/json');
+      refreshBody = JSON.stringify({ refreshToken: localRefreshToken });
+    }
+
     const refreshRes = await fetch(`${API_BASE_URL}/api/v1/auth/refresh`, {
       method: 'POST',
+      headers: refreshHeaders,
+      body: refreshBody,
       credentials: 'include',
     });
 
     if (refreshRes.ok) {
-      res = await fetch(`${API_BASE_URL}${path}`, requestOptions);
+      const data = await refreshRes.json().catch(() => null);
+      if (data && typeof window !== 'undefined') {
+        if (data.accessToken) localStorage.setItem('access_token', data.accessToken);
+        if (data.refreshToken) localStorage.setItem('refresh_token', data.refreshToken);
+      }
+      // Re-fetch dengan request options baru (yg memakai access_token baru)
+      const newRequestOptions = buildRequestOptions(options);
+      res = await fetch(`${API_BASE_URL}${path}`, newRequestOptions);
     } else {
-      // Refresh token gagal — session benar-benar expired, notifikasi handler global
+      // Refresh token gagal — session benar-benar expired, hapus token local & notifikasi handler global
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem('access_token');
+        localStorage.removeItem('refresh_token');
+      }
       if (onUnauthenticated) onUnauthenticated();
       throw new ApiError('Sesi berakhir. Silakan login kembali.', 401);
     }
