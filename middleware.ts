@@ -7,7 +7,7 @@ const PUBLIC_PATHS = ['/login'];
 const SESSION_COOKIE_NAMES = ['access_token', 'refresh_token'];
 
 function hasSessionCookie(req: NextRequest): boolean {
-  return SESSION_COOKIE_NAMES.some((name) => req.cookies.has(name));
+  return req.cookies.has('logged_in') || SESSION_COOKIE_NAMES.some((name) => req.cookies.has(name));
 }
 
 export function middleware(req: NextRequest) {

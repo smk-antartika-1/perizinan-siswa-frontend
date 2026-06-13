@@ -171,6 +171,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const [currentUser, setCurrentUser] = useState<User | null>(() =>
     getStoredUser(),
   );
+  const currentUserRef = useRef<User | null>(currentUser);
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
   const [isInitializing, setIsInitializing] = useState(true);
   const [permissions, setPermissions] = useState<Permission[]>([]);
   const [notifications, setNotifications] = useState<Notification[]>([]);
@@ -203,6 +208,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const user = normalizeUser(profile);
     setCurrentUser(user);
     storeUser(user);
+    if (typeof window !== "undefined") {
+      document.cookie = "logged_in=true; path=/; max-age=31536000; SameSite=Lax; Secure";
+    }
     return user;
   }, []);
 
@@ -269,21 +277,32 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       isHandlingUnauthRef.current = true;
       // Bersihkan semua state session
       storeUser(null);
+      
+      const wasAuthenticated = !!currentUserRef.current;
+      
       setCurrentUser(null);
       setUsers([]);
       setClasses([]);
       setPermissions([]);
       setNotifications([]);
       setIsInitializing(false);
-      // Tampilkan toast lalu redirect ke login
-      setToasts((prev) => [
-        ...prev,
-        {
-          id: `session-expired-${Date.now()}`,
-          message: 'Sesi berakhir. Silakan login kembali.',
-          type: 'error' as const,
-        },
-      ]);
+      
+      if (typeof window !== "undefined") {
+        document.cookie = "logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+      }
+
+      // Tampilkan toast hanya jika user sebelumnya memang sudah login
+      if (wasAuthenticated) {
+        setToasts((prev) => [
+          ...prev,
+          {
+            id: `session-expired-${Date.now()}`,
+            message: 'Sesi berakhir. Silakan login kembali.',
+            type: 'error' as const,
+          },
+        ]);
+      }
+      
       router.push('/login');
       // Reset flag setelah navigasi
       setTimeout(() => { isHandlingUnauthRef.current = false; }, 3000);
@@ -299,6 +318,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         if (authEpochRef.current !== epoch) return;
         storeUser(null);
         setCurrentUser(null);
+        if (typeof window !== "undefined") {
+          document.cookie = "logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        }
       })
       .finally(() => {
         if (authEpochRef.current === epoch) setIsInitializing(false);
@@ -324,12 +346,18 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         );
         setCurrentUser(profile);
         storeUser(profile);
+        if (typeof window !== "undefined") {
+          document.cookie = "logged_in=true; path=/; max-age=31536000; SameSite=Lax; Secure";
+        }
         authEpochRef.current += 1;
         await refreshData().catch(() => undefined);
         return true;
       } catch {
         storeUser(null);
         setCurrentUser(null);
+        if (typeof window !== "undefined") {
+          document.cookie = "logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+        }
         return false;
       }
     },
@@ -346,6 +374,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setPermissions([]);
     setNotifications([]);
     setIsInitializing(false);
+    if (typeof window !== "undefined") {
+      document.cookie = "logged_in=; path=/; expires=Thu, 01 Jan 1970 00:00:00 GMT";
+    }
   }, []);
 
   const addUser = useCallback(async (user: Omit<User, "id">) => {
