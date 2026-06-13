@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { Search, ScanLine, History, CheckCircle, RotateCcw, Loader2, AlertCircle } from 'lucide-react';
 import AppShell from '@/components/layout/AppShell';
 import { QRScanner } from '@/components/qr/QRComponents';
@@ -57,6 +58,7 @@ function getScanApiPath(qrValue: string) {
 
 export default function ScanQRPage() {
   const { canAccess, currentUser } = useAuth();
+  const router = useRouter();
   const { permissions, markCompleted, updatePermission } = usePermissions();
   const { showToast } = useAppContext();
   const [scannedPermissions, setScannedPermissions] = useState<ScannedPermission[]>([]);
@@ -121,11 +123,10 @@ export default function ScanQRPage() {
     const urlParams = new URLSearchParams(window.location.search);
     const token = urlParams.get('token');
     if (token) {
-      const newUrl = window.location.pathname;
-      window.history.replaceState({}, document.title, newUrl);
+      router.replace('/scan-qr');
       handleScanned(`/api/v1/security/scan/${token}`);
     }
-  }, [handleScanned]);
+  }, [handleScanned, router]);
 
   const handleMarkComplete = async (id: string) => {
     setUpdatingId(id);
