@@ -3,12 +3,14 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { motion } from "motion/react";
-import { ClipboardList, Clock, Info, ChevronRight, Car } from "lucide-react";
+import { ClipboardList, Clock, Info, ChevronRight, Car, Loader2, AlertCircle } from "lucide-react";
 import AppShell from "@/components/layout/AppShell";
 import { useAuth } from "@/hooks/useAuth";
 import { usePermissions } from "@/hooks/usePermissions";
 import { useAppContext } from "@/context/AppContext";
 import { PermissionStatus, UserRole } from "@/lib/types";
+
+const MIN_REASON_LENGTH = 10;
 
 function toTimeInputValue(date: Date) {
   return `${String(date.getHours()).padStart(2, "0")}:${String(
@@ -39,35 +41,44 @@ export default function IzinPage() {
   );
   const [nomorPolisi, setNomorPolisi] = useState("");
   const [loading, setLoading] = useState(false);
+  const [timeError, setTimeError] = useState("");
+  const [submitError, setSubmitError] = useState("");
 
   if (!canAccess([UserRole.SISWA])) {
     return (
       <AppShell>
         <div className="flex flex-col items-center justify-center h-64 gap-3 text-slate-400">
           <ClipboardList size={40} className="opacity-20" />
-          <p className="font-medium">
-            Anda tidak memiliki akses ke halaman ini
-          </p>
+          <p className="font-medium">Anda tidak memiliki akses ke halaman ini</p>
         </div>
       </AppShell>
     );
   }
 
+  const reasonTooShort = reason.trim().length > 0 && reason.trim().length < MIN_REASON_LENGTH;
+  const isReasonValid = reason.trim().length >= MIN_REASON_LENGTH;
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!currentUser) return;
-    const estimatedReturnDate = willNotReturn
-      ? null
-      : buildEstimatedReturnTime(estimatedReturnTime);
 
-    if (!willNotReturn && estimatedReturnDate && estimatedReturnDate <= new Date()) {
-      showToast("Estimasi kembali harus setelah jam berangkat.", "error");
-      return;
+    // Inline time validation
+    if (!willNotReturn) {
+      const estimatedReturnDate = buildEstimatedReturnTime(estimatedReturnTime);
+      if (estimatedReturnDate <= new Date()) {
+        setTimeError("Estimasi kembali harus setelah jam sekarang.");
+        return;
+      }
     }
-
+    setTimeError("");
+    setSubmitError("");
     setLoading(true);
 
     try {
+      const estimatedReturnDate = willNotReturn
+        ? null
+        : buildEstimatedReturnTime(estimatedReturnTime);
+
       await addPermission({
         studentId: currentUser.id,
         studentName: currentUser.name,
@@ -84,8 +95,10 @@ export default function IzinPage() {
       });
       showToast("Pengajuan izin berhasil dikirim.", "success");
       router.push("/dashboard");
-    } catch {
-      showToast("Pengajuan izin gagal dikirim.", "error");
+    } catch (err: any) {
+      const msg = err?.message || "Pengajuan izin gagal. Coba beberapa saat lagi.";
+      setSubmitError(msg);
+      showToast(msg, "error");
     } finally {
       setLoading(false);
     }
@@ -116,26 +129,23 @@ export default function IzinPage() {
         >
           {/* Student Info */}
           <div className="flex items-center gap-3 p-4 bg-blue-50 rounded-2xl border border-blue-100 mb-6">
-            <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg">
+            <div className="w-11 h-11 rounded-xl bg-blue-600 flex items-center justify-center text-white font-bold text-lg flex-shrink-0">
               {currentUser?.name.charAt(0)}
             </div>
             <div>
-              <p className="font-semibold text-slate-800">
-                {currentUser?.name}
-              </p>
-              <p className="text-xs text-blue-600 font-medium">
-                {currentUser?.kelas}
-              </p>
+              <p className="font-semibold text-slate-800">{currentUser?.name}</p>
+              <p className="text-xs text-blue-600 font-medium">{currentUser?.kelas}</p>
             </div>
           </div>
 
-          <form onSubmit={handleSubmit} className="space-y-5">
+          <form onSubmit={handleSubmit} className="space-y-5" noValidate>
             {/* Kategori Izin */}
             <div>
-              <label className="label">
+              <label htmlFor="izin-category" className="label">
                 Kategori Izin <span className="text-red-400">*</span>
               </label>
               <select
+                id="izin-category"
                 required
                 value={category}
                 onChange={(e) => {
@@ -150,9 +160,7 @@ export default function IzinPage() {
                 className="input"
               >
                 <option value="keperluan">Keperluan Keluarga / Pribadi</option>
-                <option value="sakit">
-                  Sakit (Tidak Wajib Kembali Hari Ini)
-                </option>
+                <option value="sakit">Sakit (Tidak Wajib Kembali Hari Ini)</option>
                 <option value="dispensasi">
                   Dispensasi Kegiatan Sekolah (OSIS / Lomba)
                 </option>
@@ -162,17 +170,33 @@ export default function IzinPage() {
 
             {/* Reason */}
             <div>
-              <label className="label">
-                Alasan Izin <span className="text-red-400">*</span>
-              </label>
+              <div className="flex items-center justify-between mb-1.5">
+                <label htmlFor="izin-reason" className="label mb-0">
+                  Alasan Izin <span className="text-red-400">*</span>
+                </label>
+                <span className={`text-xs font-semibold tabular-nums ${
+                  reason.trim().length < MIN_REASON_LENGTH
+                    ? "text-slate-400"
+                    : "text-emerald-600"
+                }`}>
+                  {reason.trim().length}/{MIN_REASON_LENGTH}+
+                </span>
+              </div>
               <textarea
+                id="izin-reason"
                 required
                 rows={4}
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
-                placeholder="Jelaskan alasan Anda dengan jelas dan singkat..."
-                className="input resize-none"
+                placeholder="Jelaskan alasan Anda dengan jelas dan singkat... (min. 10 karakter)"
+                className={`input resize-none ${reasonTooShort ? "input-error" : ""}`}
               />
+              {reasonTooShort && (
+                <p className="field-error">
+                  <AlertCircle size={12} />
+                  Alasan terlalu singkat. Minimal {MIN_REASON_LENGTH} karakter.
+                </p>
+              )}
               <div className="flex flex-wrap gap-2 mt-2">
                 {reasonPresets.map((p) => (
                   <button
@@ -191,37 +215,54 @@ export default function IzinPage() {
               </div>
             </div>
 
-            {/* Time (auto) */}
-            <div className="grid grid-cols-2 gap-4">
+            {/* Time — stack on small screens */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="label">Jam Berangkat</label>
                 <div className="input bg-slate-50 flex items-center gap-2 cursor-not-allowed text-slate-500">
                   <Clock size={15} />
-                  <span>Sekarang</span>
+                  <span>Sekarang (otomatis)</span>
                 </div>
               </div>
               <div>
-                <label className="label">Estimasi Kembali</label>
+                <label htmlFor="izin-return-time" className="label">
+                  Estimasi Kembali
+                </label>
                 <input
+                  id="izin-return-time"
                   type="time"
                   required={!willNotReturn}
                   disabled={willNotReturn}
                   value={estimatedReturnTime}
-                  onChange={(e) => setEstimatedReturnTime(e.target.value)}
-                  className="input disabled:bg-slate-50 disabled:text-slate-350 disabled:cursor-not-allowed"
+                  onChange={(e) => {
+                    setEstimatedReturnTime(e.target.value);
+                    setTimeError("");
+                  }}
+                  className={`input disabled:bg-slate-50 disabled:text-slate-400 disabled:cursor-not-allowed ${
+                    timeError ? "input-error" : ""
+                  }`}
                 />
+                {timeError && (
+                  <p className="field-error">
+                    <AlertCircle size={12} />
+                    {timeError}
+                  </p>
+                )}
                 <label className="mt-2 flex items-center gap-2 text-xs font-semibold text-slate-600 cursor-pointer select-none">
                   <input
                     type="checkbox"
                     checked={willNotReturn}
-                    onChange={(e) => setWillNotReturn(e.target.checked)}
+                    onChange={(e) => {
+                      setWillNotReturn(e.target.checked);
+                      setTimeError("");
+                    }}
                     className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500 border-slate-300"
                   />
                   Tidak kembali ke sekolah hari ini
                 </label>
                 <p className="text-[11px] text-slate-400 mt-1">
                   {willNotReturn
-                    ? "Estimasi kembali dinonaktifkan untuk izin pulang."
+                    ? "Estimasi kembali dinonaktifkan."
                     : "Pilih jam perkiraan siswa kembali ke sekolah."}
                 </p>
               </div>
@@ -229,7 +270,7 @@ export default function IzinPage() {
 
             {/* Nomor Polisi */}
             <div>
-              <label className="label">
+              <label htmlFor="izin-nomor-polisi" className="label">
                 <Car size={11} className="inline mr-1" />
                 No. Polisi Kendaraan{" "}
                 <span className="text-slate-300 font-normal normal-case">
@@ -237,6 +278,7 @@ export default function IzinPage() {
                 </span>
               </label>
               <input
+                id="izin-nomor-polisi"
                 type="text"
                 value={nomorPolisi}
                 onChange={(e) => setNomorPolisi(e.target.value.toUpperCase())}
@@ -255,14 +297,23 @@ export default function IzinPage() {
               </p>
             </div>
 
+            {/* Inline submit error */}
+            {submitError && (
+              <div className="flex items-start gap-2.5 p-3.5 rounded-xl bg-red-50 border border-red-200 text-red-700 animate-fadeIn">
+                <AlertCircle size={15} className="flex-shrink-0 mt-0.5" />
+                <p className="text-xs font-medium leading-relaxed">{submitError}</p>
+              </div>
+            )}
+
             <button
               type="submit"
-              disabled={loading || !reason.trim()}
+              id="izin-submit-btn"
+              disabled={loading || !isReasonValid}
               className="btn-primary w-full py-3.5 text-base"
             >
               {loading ? (
                 <>
-                  <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <Loader2 size={18} className="animate-spin" />
                   Mengirim...
                 </>
               ) : (

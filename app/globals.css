@@ -40,67 +40,127 @@
   ::selection {
     @apply bg-blue-600 text-white;
   }
+  /* Accessible focus ring — visible untuk keyboard, clean untuk mouse */
+  :focus-visible {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+    border-radius: 8px;
+  }
 }
 
 @layer components {
-  .z-layer-raised {
-    z-index: var(--z-raised);
-  }
-  .z-layer-dropdown-backdrop {
-    z-index: var(--z-dropdown-backdrop);
-  }
-  .z-layer-dropdown {
-    z-index: var(--z-dropdown);
-  }
-  .z-layer-sticky {
-    z-index: var(--z-sticky);
-  }
-  .z-layer-drawer {
-    z-index: var(--z-drawer);
-  }
-  .z-layer-overlay {
-    z-index: var(--z-overlay);
-  }
-  .z-layer-modal {
-    z-index: var(--z-modal);
-  }
-  .z-layer-toast {
-    z-index: var(--z-toast);
-  }
+  /* Z-index layers */
+  .z-layer-raised          { z-index: var(--z-raised); }
+  .z-layer-dropdown-backdrop { z-index: var(--z-dropdown-backdrop); }
+  .z-layer-dropdown        { z-index: var(--z-dropdown); }
+  .z-layer-sticky          { z-index: var(--z-sticky); }
+  .z-layer-drawer          { z-index: var(--z-drawer); }
+  .z-layer-overlay         { z-index: var(--z-overlay); }
+  .z-layer-modal           { z-index: var(--z-modal); }
+  .z-layer-toast           { z-index: var(--z-toast); }
+
+  /* Card variants */
   .card {
     @apply bg-white rounded-2xl border border-slate-200 shadow-sm;
   }
   .card-lg {
     @apply bg-white rounded-3xl border border-slate-200 shadow-sm;
   }
+
+  /* Button variants — consistent disabled state + active scale */
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl transition-all active:scale-95 shadow-lg shadow-blue-500/20 disabled:opacity-60 disabled:cursor-not-allowed;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           bg-blue-600 hover:bg-blue-700 text-white font-semibold
+           rounded-xl transition-all active:scale-95
+           shadow-lg shadow-blue-500/20
+           disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100;
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 font-semibold rounded-xl transition-all active:scale-95;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           bg-white hover:bg-slate-50 text-slate-700 border border-slate-200
+           font-semibold rounded-xl transition-all active:scale-95
+           disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100;
   }
   .btn-danger {
-    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-red-600 hover:bg-red-700 text-white font-semibold rounded-xl transition-all active:scale-95;
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5
+           bg-red-600 hover:bg-red-700 text-white font-semibold
+           rounded-xl transition-all active:scale-95
+           shadow-lg shadow-red-500/20
+           disabled:opacity-60 disabled:cursor-not-allowed disabled:active:scale-100;
   }
+
+  /* Form inputs */
   .input {
-    @apply w-full px-4 py-3 rounded-xl border border-slate-200 bg-white focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10 outline-none transition-all text-sm text-slate-800 placeholder:text-slate-400;
+    @apply w-full px-4 py-3 rounded-xl border border-slate-200 bg-white
+           focus:border-blue-500 focus:ring-4 focus:ring-blue-500/10
+           outline-none transition-all text-sm text-slate-800 placeholder:text-slate-400;
   }
+  /* Input state: error */
+  .input-error {
+    @apply border-red-400 bg-red-50/30
+           focus:border-red-500 focus:ring-4 focus:ring-red-500/10;
+  }
+
+  /* Labels */
   .label {
     @apply block text-xs font-bold text-slate-500 uppercase tracking-widest mb-1.5;
   }
-  .page-header {
-    @apply mb-8;
-  }
-  .page-title {
-    @apply text-2xl font-bold text-slate-800;
-  }
-  .page-subtitle {
-    @apply text-sm text-slate-400 mt-1;
-  }
+
+  /* Page layout helpers */
+  .page-header  { @apply mb-8; }
+  .page-title   { @apply text-2xl font-bold text-slate-800; }
+  .page-subtitle { @apply text-sm text-slate-400 mt-1; }
+
+  /* Stat cards */
   .stat-card {
-    @apply bg-white rounded-2xl border border-slate-200 shadow-sm p-5 flex items-center gap-4 hover:shadow-md hover:-translate-y-0.5 transition-all cursor-default;
+    @apply bg-white rounded-2xl border border-slate-200 shadow-sm p-5
+           flex items-center gap-4
+           hover:shadow-md hover:-translate-y-0.5 transition-all cursor-default;
   }
+
+  /* Status badge */
   .status-badge {
-    @apply inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold uppercase tracking-wider;
+    @apply inline-flex items-center px-2.5 py-0.5 rounded-full
+           text-xs font-semibold uppercase tracking-wider;
+  }
+
+  /* Skeleton loading pulse */
+  .skeleton {
+    @apply animate-pulse bg-slate-100 rounded-xl;
+  }
+
+  /* Scroll fade hint — indicates table has more content */
+  .scroll-fade-right {
+    mask-image: linear-gradient(to right, black calc(100% - 40px), transparent 100%);
+  }
+
+  /* Consistent micro-animation for interactive elements */
+  .animate-transition {
+    @apply transition-all duration-150 ease-in-out;
+  }
+
+  /* Inline form validation message */
+  .field-error {
+    @apply mt-1.5 text-xs font-semibold text-red-600 flex items-center gap-1;
+  }
+}
+
+/* FadeIn animation */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@layer utilities {
+  .animate-fadeIn {
+    animation: fadeIn 0.2s ease-out;
+  }
+  .animate-slideUp {
+    animation: slideUp 0.25s ease-out;
   }
 }

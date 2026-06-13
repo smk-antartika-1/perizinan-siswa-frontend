@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'motion/react';
 import { 
   CheckCircle2, XCircle, Clock, ChevronDown, ChevronUp, 
-  QrCode, Eye, AlertCircle, Calendar, ArrowRight, Zap 
+  QrCode, Eye, AlertCircle, Calendar, ArrowRight, Zap, Loader2
 } from 'lucide-react';
 import StatusBadge from '@/components/ui/StatusBadge';
 import { Permission, PermissionStatus, UserRole } from '@/lib/types';
@@ -27,6 +27,7 @@ interface PermissionCardProps {
   onBypassApprove?: (id: string, urgencyReason: string) => void;
   userRole?: UserRole;
   showActions?: boolean;
+  isActionLoading?: boolean;
 }
 
 export default function PermissionCard({
@@ -36,6 +37,7 @@ export default function PermissionCard({
   onBypassApprove,
   userRole,
   showActions = false,
+  isActionLoading = false,
 }: PermissionCardProps) {
   const router = useRouter();
   const { viewStudent, users } = useAppContext();
@@ -47,8 +49,11 @@ export default function PermissionCard({
   const [bypassOpen, setBypassOpen] = useState(false);
   const [bypassReason, setBypassReason] = useState('');
 
-  // Find Student NIS for global details modal
-  const studentUser = users.find(u => u.name === p.studentName || u.id === p.studentId);
+  // Memoize user lookup — users array bisa besar
+  const studentUser = useMemo(
+    () => users.find(u => u.name === p.studentName || u.id === p.studentId),
+    [users, p.studentName, p.studentId],
+  );
   const studentNis = studentUser?.nis || 'NIS-MOCK';
 
   const canApprove = showActions && canApprovePermission(p, userRole);
@@ -75,13 +80,13 @@ export default function PermissionCard({
           <div className="p-4 flex items-center justify-between gap-3">
             {/* Avatar & Clickable Name */}
             <div className="flex items-center gap-3 flex-1 min-w-0">
-              <div 
+              <button
                 onClick={() => viewStudent(studentNis)}
-                className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center font-bold text-blue-600 text-lg flex-shrink-0 cursor-pointer hover:bg-blue-200 transition-colors"
-                title="Buka Profil Siswa"
+                aria-label={`Buka profil ${p.studentName}`}
+                className="w-10 h-10 rounded-xl bg-blue-100 flex items-center justify-center font-bold text-blue-600 text-lg flex-shrink-0 hover:bg-blue-200 transition-colors"
               >
                 {p.studentName.charAt(0)}
-              </div>
+              </button>
               <div className="flex-1 min-w-0">
                 <button
                   onClick={() => viewStudent(studentNis)}
@@ -99,14 +104,16 @@ export default function PermissionCard({
               {displayStatus === PermissionStatus.APPROVED_PIKET && (
                 <button
                   onClick={() => setQrOpen(true)}
+                  aria-label="Lihat QR Code tiket siswa"
                   className="p-1.5 rounded-lg bg-blue-50 text-blue-600 hover:bg-blue-100 transition-colors"
-                  title="Lihat QR Code"
                 >
                   <QrCode size={15} />
                 </button>
               )}
               <button
                 onClick={() => setExpanded(!expanded)}
+                aria-expanded={expanded}
+                aria-label={expanded ? 'Sembunyikan detail' : 'Tampilkan detail'}
                 className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 transition-colors"
               >
                 {expanded ? <ChevronUp size={15} /> : <ChevronDown size={15} />}
@@ -264,7 +271,7 @@ export default function PermissionCard({
           )}
 
           <div className="flex gap-2 w-full flex-wrap">
-            {/* View Details Redirect button (Universal CTA) */}
+            {/* View Details button */}
             <button
               onClick={() => router.push(`/izin/${p.id}`)}
               className="flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 font-bold text-xs text-slate-600 transition-all shadow-sm select-none"
@@ -284,9 +291,10 @@ export default function PermissionCard({
                       setCommentText('');
                     }
                   }}
-                  className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl border border-red-200 text-red-600 text-xs font-bold hover:bg-red-50 transition-all select-none"
+                  disabled={isActionLoading}
+                  className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl border border-red-200 text-red-600 text-xs font-bold hover:bg-red-50 transition-all select-none disabled:opacity-60"
                 >
-                  <XCircle size={13} />
+                  {isActionLoading ? <Loader2 size={13} className="animate-spin" /> : <XCircle size={13} />}
                   Tolak
                 </button>
                 <button
@@ -294,21 +302,23 @@ export default function PermissionCard({
                     onApprove?.(p.id, commentText);
                     setCommentText('');
                   }}
-                  className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-500/10 select-none"
+                  disabled={isActionLoading}
+                  className="flex-1 flex items-center justify-center gap-1 py-2.5 rounded-xl bg-blue-600 text-white text-xs font-bold hover:bg-blue-700 transition-all shadow-md shadow-blue-500/10 select-none disabled:opacity-60"
                 >
-                  <CheckCircle2 size={13} />
+                  {isActionLoading ? <Loader2 size={13} className="animate-spin" /> : <CheckCircle2 size={13} />}
                   Setujui
                 </button>
               </>
             )}
 
-            {/* Bypass Button — only shown when onBypassApprove is provided and status is PENDING */}
+            {/* Bypass Button */}
             {onBypassApprove && showActions && p.status === PermissionStatus.PENDING && (
               <button
                 onClick={() => { setBypassReason(''); setBypassOpen(true); }}
-                className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-amber-400 bg-amber-50 text-amber-700 text-xs font-bold hover:bg-amber-100 transition-all shadow-sm select-none"
+                disabled={isActionLoading}
+                className="w-full flex items-center justify-center gap-1.5 py-2.5 rounded-xl border border-amber-400 bg-amber-50 text-amber-700 text-xs font-bold hover:bg-amber-100 transition-all shadow-sm select-none disabled:opacity-60"
               >
-                <Zap size={13} className="fill-amber-400" />
+                {isActionLoading ? <Loader2 size={13} className="animate-spin" /> : <Zap size={13} className="fill-amber-400" />}
                 Setujui Bypass (Darurat)
               </button>
             )}

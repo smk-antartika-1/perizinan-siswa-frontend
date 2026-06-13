@@ -15,6 +15,7 @@ import {
   X,
   UserCircle,
   Settings,
+  Loader2,
 } from "lucide-react";
 import { UserRole, ROLE_LABELS } from "@/lib/types";
 import { useAuth } from "@/hooks/useAuth";
@@ -75,12 +76,8 @@ const NAV_ITEMS = [
     icon: ScanLine,
     roles: [UserRole.SECURITY, UserRole.ADMIN],
   },
-  {
-    href: "/scan-qr#daftar-scan",
-    label: "Daftar Scan",
-    icon: ClipboardList,
-    roles: [UserRole.SECURITY, UserRole.ADMIN],
-  },
+  // ⚠️ 'Daftar Scan' dihapus — bagian dari halaman /scan-qr (fragment)
+  // Dua nav item terpisah ke halaman yang sama membingungkan user
   {
     href: "/admin",
     label: "Panel Admin",
@@ -103,6 +100,7 @@ export default function Sidebar({ onClose, isMobile = false }: SidebarProps) {
   const pathname = usePathname();
   const router = useRouter();
   const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+  const [logoutLoading, setLogoutLoading] = useState(false);
 
   const visibleItems = NAV_ITEMS.filter((item) => canAccess(item.roles));
 
@@ -112,8 +110,13 @@ export default function Sidebar({ onClose, isMobile = false }: SidebarProps) {
 
   const confirmLogout = async () => {
     setShowLogoutConfirm(false);
-    await logout();
-    router.push("/login");
+    setLogoutLoading(true);
+    try {
+      await logout();
+      router.push("/login");
+    } finally {
+      setLogoutLoading(false);
+    }
   };
 
   return (
@@ -172,12 +175,13 @@ export default function Sidebar({ onClose, isMobile = false }: SidebarProps) {
             Menu Utama
           </p>
           {visibleItems.map((item) => {
-            const isActive = pathname === item.href;
+            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             return (
               <Link
                 key={item.href}
                 href={item.href}
                 onClick={onClose}
+                aria-current={isActive ? 'page' : undefined}
                 className={`flex items-center gap-3 px-3 py-3 rounded-xl transition-all font-medium text-sm group ${
                   isActive
                     ? "bg-blue-600 text-white shadow-lg shadow-blue-500/25"
@@ -237,10 +241,16 @@ export default function Sidebar({ onClose, isMobile = false }: SidebarProps) {
         <div className="p-4 border-t border-slate-100">
           <button
             onClick={handleLogout}
-            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors font-medium text-sm"
+            disabled={logoutLoading}
+            aria-label="Keluar dari sistem"
+            className="w-full flex items-center gap-3 px-3 py-3 rounded-xl text-red-500 hover:bg-red-50 transition-colors font-medium text-sm disabled:opacity-60"
           >
-            <LogOut size={18} />
-            Keluar
+            {logoutLoading ? (
+              <Loader2 size={18} className="animate-spin" />
+            ) : (
+              <LogOut size={18} />
+            )}
+            {logoutLoading ? 'Keluar...' : 'Keluar'}
           </button>
         </div>
       </div>

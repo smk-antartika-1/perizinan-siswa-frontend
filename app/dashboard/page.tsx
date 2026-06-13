@@ -30,6 +30,69 @@ function getReturnState(permission: Permission) {
     : 'not_returned';
 }
 
+function DashboardSkeleton() {
+  return (
+    <AppShell>
+      {/* Welcome */}
+      <div className="page-header">
+        <div className="skeleton h-7 w-48 mb-2" />
+        <div className="skeleton h-4 w-64" />
+      </div>
+
+      {/* Stats Grid */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        {[...Array(4)].map((_, i) => (
+          <div key={i} className="stat-card p-5 flex items-center gap-4">
+            <div className="w-11 h-11 rounded-xl bg-slate-100 skeleton flex-shrink-0" />
+            <div className="space-y-2 flex-1">
+              <div className="skeleton h-3 w-16" />
+              <div className="skeleton h-6 w-10" />
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Left column (Siswa QR / CTA or recent scans) */}
+        <div className="space-y-4 xl:col-span-1">
+          <div className="card-lg p-6 space-y-4">
+            <div className="w-16 h-16 bg-slate-100 rounded-2xl mx-auto skeleton" />
+            <div className="space-y-2 text-center">
+              <div className="skeleton h-4 w-32 mx-auto" />
+              <div className="skeleton h-3 w-48 mx-auto" />
+            </div>
+            <div className="skeleton h-10 w-full rounded-xl" />
+          </div>
+        </div>
+
+        {/* Right column (Table) */}
+        <div className="xl:col-span-2">
+          <div className="card-lg p-5">
+            <div className="flex justify-between items-center mb-6">
+              <div className="skeleton h-5 w-32" />
+              <div className="skeleton h-3 w-20" />
+            </div>
+            <div className="space-y-4">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="flex items-center justify-between py-2 border-b border-slate-50 last:border-0">
+                  <div className="flex items-center gap-3">
+                    <div className="w-8 h-8 rounded-lg bg-slate-100 skeleton flex-shrink-0" />
+                    <div className="space-y-1.5">
+                      <div className="skeleton h-3.5 w-24" />
+                      <div className="skeleton h-2.5 w-16" />
+                    </div>
+                  </div>
+                  <div className="skeleton h-6 w-16 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    </AppShell>
+  );
+}
+
 export default function DashboardPage() {
   const { currentUser } = useAuth();
   const { 
@@ -41,7 +104,7 @@ export default function DashboardPage() {
     reject,
     markCompleted
   } = usePermissions();
-  const { showToast } = useAppContext();
+  const { showToast, isInitializing } = useAppContext();
 
   const [rejectingPermId, setRejectingPermId] = useState<string | null>(null);
   const [rejectReason, setRejectReason] = useState('');
@@ -94,7 +157,7 @@ export default function DashboardPage() {
     }
   };
 
-  if (!currentUser) return null;
+  if (isInitializing || !currentUser) return <DashboardSkeleton />;
 
   const stats = getPermissionStats(myPermissions);
 
@@ -306,9 +369,31 @@ export default function DashboardPage() {
         </motion.section>
       )}
 
-      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
-        {/* Siswa: QR aktif + CTA */}
-        {currentUser.role === UserRole.SISWA && (
+      {currentUser.role === UserRole.SISWA && myPermissions.length === 0 ? (
+        <motion.div
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="card-lg p-8 md:p-12 text-center max-w-2xl mx-auto space-y-6"
+        >
+          <div className="w-20 h-20 bg-blue-50 rounded-3xl mx-auto flex items-center justify-center text-blue-600">
+            <ClipboardList size={40} className="text-blue-500 animate-pulse" />
+          </div>
+          <div className="space-y-2 max-w-md mx-auto">
+            <h3 className="text-lg font-bold text-slate-800">Mulai Pengajuan Perizinan Pertama Anda</h3>
+            <p className="text-sm text-slate-500 leading-relaxed">
+              Anda belum pernah mengajukan izin keluar lingkungan sekolah. Semua riwayat izin, status persetujuan, dan QR Code penjemputan/keluar Anda akan tampil di halaman ini.
+            </p>
+          </div>
+          <div>
+            <Link href="/izin" className="btn-primary px-6 py-3 inline-flex items-center gap-2">
+              <Plus size={18} /> Ajukan Izin Baru
+            </Link>
+          </div>
+        </motion.div>
+      ) : (
+        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+          {/* Siswa: QR aktif + CTA */}
+          {currentUser.role === UserRole.SISWA && (
           <div className="space-y-4">
             {activePermission ? (
               <div>
@@ -458,6 +543,7 @@ export default function DashboardPage() {
           </div>
         </div>
       </div>
+      )}
 
       {/* Reject Confirmation Modal for Table Quick Actions */}
       <Modal 

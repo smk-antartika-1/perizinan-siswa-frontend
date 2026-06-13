@@ -69,7 +69,7 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
   // Simulate loading on table updates for smooth premium UX
   useEffect(() => {
     setIsTableLoading(true);
-    const timer = setTimeout(() => setIsTableLoading(false), 300);
+    const timer = setTimeout(() => setIsTableLoading(false), 150);
     return () => clearTimeout(timer);
   }, [search, categoryFilter, statusFilter, startDate, endDate, sortColumn, sortDirection, currentPage, pageSize]);
 
@@ -527,17 +527,28 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
               <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-200 flex items-center justify-center text-slate-350 mb-1">
                 <SlidersHorizontal size={24} className="opacity-40" />
               </div>
-              <h4 className="font-bold text-slate-800 text-sm">Tidak Ada Perizinan Ditemukan</h4>
-              <p className="text-xs text-slate-400 leading-relaxed">
-                Tidak ada data perizinan yang sesuai dengan filter pencarian Anda. Coba hapus kata kunci pencarian atau ubah rentang tanggal.
-              </p>
-              {hasActiveFilters && (
-                <button
-                  onClick={resetFilters}
-                  className="btn-secondary text-xs px-4 py-2 mt-1 rounded-xl"
-                >
-                  Hapus Semua Filter
-                </button>
+              {hasActiveFilters ? (
+                /* Hasil filter kosong — berbeda dari data benar-benar kosong */
+                <>
+                  <h4 className="font-bold text-slate-800 text-sm">Tidak Ditemukan</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Tidak ada perizinan yang sesuai filter pencarian. Coba ubah kata kunci, kategori, atau rentang tanggal.
+                  </p>
+                  <button
+                    onClick={resetFilters}
+                    className="btn-secondary text-xs px-4 py-2 mt-1 rounded-xl"
+                  >
+                    Hapus Semua Filter
+                  </button>
+                </>
+              ) : (
+                /* Data memang kosong — bukan karena filter */
+                <>
+                  <h4 className="font-bold text-slate-800 text-sm">Belum Ada Data Perizinan</h4>
+                  <p className="text-xs text-slate-400 leading-relaxed">
+                    Belum ada riwayat perizinan yang tercatat.
+                  </p>
+                </>
               )}
             </div>
           </div>
@@ -586,7 +597,7 @@ export default function PermissionTable({ permissions, groupByClass = false }: P
           })
         ) : (
           // Flat list layout option
-          <div className="overflow-x-auto">
+          <div className="overflow-x-auto scroll-fade-right">
             <table className="w-full text-left border-collapse">
               <thead className="bg-slate-50 border-b border-slate-200">
                 <tr>

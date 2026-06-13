@@ -14,6 +14,7 @@ export function usePermissions() {
     refreshData,
     markReturned,
     markNoReturn,
+    isInitializing,
   } = useAppContext();
   const { currentUser } = useAuth();
 
@@ -128,5 +129,6 @@ export function usePermissions() {
     markCompleted,
     markNotReturned,
     activePermission,
+    isLoading: isInitializing,
   };
 }
